@@ -538,7 +538,7 @@ export default function ProfilPage() {
             <Reveal>
               <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-[#D9E2D3] bg-white p-8">
                 <Image
-                  src="/img/Polibatam.jpeg"
+                  src="/img/polibatam.jpg"
                   alt="Logo Polibatam University Berdampak"
                   width={640}
                   height={320}

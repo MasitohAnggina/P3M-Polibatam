@@ -3,23 +3,26 @@
 import Link from "next/link";
 import { Poppins } from "next/font/google";
 import {
+  createContext,
+  useContext,
+  useId,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ElementType,
   type ReactNode,
 } from "react";
 import {
   BarChart3,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   ChevronsUpDown,
   Download,
-  Info,
+  Image as ImageIcon,
   LineChart,
   PieChart,
   RotateCcw,
@@ -73,79 +76,21 @@ const PIE_COLORS = [
 ];
 
 /* =========================================================
-   TANGGAL PEMBARUAN DATA
-   Format: "YYYY-MM-DD" (contoh: "2026-10-14").
-
-   TODO: ganti dengan tanggal asli dari backend (mis. kolom
-   updated_at). Tanggal ini tampil di baris catatan di bawah
-   filter dan di bagian bawah tiap panel. Kalau satu panel punya
-   tanggal sendiri, kirim lewat prop `updatedAt` pada
-   ChartPanel / PanelShell.
+   API
+   GET /api/infografis (publik). Tanggal pembaruan data diambil
+   dari backend (updated_at) dan dibagikan lewat context. Dipakai
+   untuk nama file unduhan (PNG dan CSV).
 ========================================================= */
 
-const DATA_UPDATED_AT = "2026-10-14";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-/* "2026-10-14" -> "14 Oktober 2026".
-   Dibuat manual (tanpa Intl) supaya hasil di server dan di browser
-   selalu sama, tidak memicu hydration error. */
-function formatDate(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  if (!year || !month || !day || month < 1 || month > 12) return iso;
-
-  return `${String(day).padStart(2, "0")} ${MONTH_NAMES[month - 1]} ${year}`;
-}
+const UpdatedAtContext = createContext("");
 
 /* =========================================================
-   DATA DUMMY
-   Struktur mengikuti halaman statistik LPPM PCR:
-   data per (tahun, program studi, kategori dosen).
-
-   TODO: ganti buildData() dengan data asli dari API/backend.
-   Selama bentuk Row-nya sama, semua grafik dan tabel
-   otomatis mengikuti.
+   BENTUK DATA DARI BACKEND
+   Data per (tahun, program studi). Kategori dosen (DTPS/DTPR)
+   belum tersedia di backend, jadi filternya tidak ditampilkan.
 ========================================================= */
-
-const YEARS = [2022, 2023, 2024, 2025, 2026];
-
-/* TODO: sesuaikan daftar program studi dengan data Polibatam */
-const PRODI = [
-  { name: "Teknik Informatika", short: "TI", jurusan: "Teknik Informatika" },
-  {
-    name: "Teknologi Rekayasa Perangkat Lunak",
-    short: "TRPL",
-    jurusan: "Teknik Informatika",
-  },
-  { name: "Animasi", short: "ANI", jurusan: "Teknik Informatika" },
-  {
-    name: "Teknik Elektronika Manufaktur",
-    short: "TEM",
-    jurusan: "Teknik Elektro",
-  },
-  { name: "Teknik Mesin", short: "TM", jurusan: "Teknik Mesin" },
-  { name: "Akuntansi", short: "AKT", jurusan: "Manajemen Bisnis" },
-];
-
-const JURUSAN = Array.from(new Set(PRODI.map((p) => p.jurusan)));
-
-const CATEGORIES = [
-  { code: "DTPS", label: "Dosen Tetap Program Studi (DTPS)" },
-  { code: "DTPR", label: "Dosen Tetap Penghitung Rasio (DTPR)" },
-];
 
 const NUM_KEYS = [
   "dosen",
@@ -163,12 +108,6 @@ const NUM_KEYS = [
   "prosiding",
   "buku",
   "lainnya",
-  "author1",
-  "author2",
-  "author3",
-  "author4",
-  "authorCorr",
-  "authorLain",
 ] as const;
 
 type NumKey = (typeof NUM_KEYS)[number];
@@ -178,111 +117,55 @@ type Row = {
   prodi: string;
   jurusan: string;
   category: string;
+  programPenelitian: Record<string, number>;
+  jenisPengabdian: Record<string, number>;
 } & Totals;
 
-function buildData(): Row[] {
-  const rows: Row[] = [];
+type ProdiInfo = { name: string; short: string; jurusan: string };
 
-  YEARS.forEach((year, yi) => {
-    PRODI.forEach((p, pi) => {
-      CATEGORIES.forEach((cat, ci) => {
-        const base = 2 + ((pi * 3 + ci * 2 + yi) % 4);
-        const dosen = 6 + ((pi + ci * 3) % 5);
+type DosenItem = {
+  name: string;
+  nip: string;
+  prodi: string;
+  jurusan: string;
+  penelitian: number;
+  pengabdian: number;
+  publikasi: number;
+};
 
-        const publikasi = base + yi + 2;
+type InfografisData = {
+  updated_at: string;
+  years: number[];
+  jurusan: string[];
+  prodi: ProdiInfo[];
+  rows: Row[];
+  dosen: DosenItem[];
+};
 
-        /* level publikasi */
-        const pubInternasional = Math.floor(publikasi * 0.2);
-        const pubInternal = Math.floor(publikasi * 0.25);
-        const pubNasional = publikasi - pubInternasional - pubInternal;
+const EMPTY_DATA: InfografisData = {
+  updated_at: "",
+  years: [],
+  jurusan: [],
+  prodi: [],
+  rows: [],
+  dosen: [],
+};
 
-        /* jenis publikasi */
-        const prosiding = Math.floor(publikasi * 0.25);
-        const buku = publikasi >= 8 && (pi + yi) % 3 === 0 ? 1 : 0;
-        const lainnya = Math.floor(publikasi * 0.1);
-        const jurnal = publikasi - prosiding - buku - lainnya;
+/* Jumlahkan peta {label: jumlah} dari banyak baris, urut terbanyak */
+function sumMap(rows: Row[], key: "programPenelitian" | "jenisPengabdian") {
+  const total: Record<string, number> = {};
 
-        /* status author */
-        const author1 = Math.ceil(publikasi * 0.3);
-        const author2 = Math.floor(publikasi * 0.25);
-        const author3 = Math.floor(publikasi * 0.15);
-        const author4 = Math.floor(publikasi * 0.1);
-        const authorCorr = Math.floor(publikasi * 0.1);
-        const authorLain =
-          publikasi - author1 - author2 - author3 - author4 - authorCorr;
-
-        rows.push({
-          year,
-          prodi: p.name,
-          jurusan: p.jurusan,
-          category: cat.code,
-          dosen,
-          partPenelitian: Math.min(dosen, 3 + ((pi + yi) % 4)),
-          partPengabdian: Math.min(dosen, 2 + ((pi + ci + yi) % 4)),
-          partPublikasi: Math.min(dosen, 3 + ((pi + yi + ci) % 5)),
-          penelitian: base + yi,
-          pengabdian: Math.max(1, base - 1 + Math.floor(yi * 0.8)),
-          publikasi,
-          hki: (pi + yi + ci) % 3 === 0 ? 1 + (yi > 2 ? 1 : 0) : 0,
-          pubInternal,
-          pubNasional,
-          pubInternasional,
-          jurnal,
-          prosiding,
-          buku,
-          lainnya,
-          author1,
-          author2,
-          author3,
-          author4,
-          authorCorr,
-          authorLain,
-        });
-      });
+  rows.forEach((row) => {
+    Object.entries(row[key] ?? {}).forEach(([label, value]) => {
+      total[label] = (total[label] ?? 0) + value;
     });
   });
 
-  return rows;
+  return Object.entries(total)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
-const DATA = buildData();
-
-/* TODO: ganti dengan data kinerja dosen asli (nama, NIP, prodi) */
-const DOSEN = PRODI.flatMap((p, pi) =>
-  [0, 1].map((k) => ({
-    name: `Dosen ${pi * 2 + k + 1}`,
-    nip: "-",
-    prodi: p.short,
-    jurusan: p.jurusan,
-    penelitian: 1 + ((pi + k) % 4),
-    pengabdian: 1 + ((pi + k * 2) % 3),
-    publikasi: 2 + ((pi * 2 + k) % 5),
-  }))
-);
-
-/* Pembagian jenis program (dummy): total dibagi menurut bobot */
-const PROGRAM_PENELITIAN = [
-  { label: "Hibah Internal", weight: 0.4 },
-  { label: "Hibah Kemdiktisaintek", weight: 0.3 },
-  { label: "Kerjasama Industri", weight: 0.2 },
-  { label: "Pembiayaan Mandiri", weight: 0.1 },
-];
-
-const JENIS_PENGABDIAN = [
-  { label: "Hibah Internal", weight: 0.35 },
-  { label: "Hibah Kemdiktisaintek", weight: 0.25 },
-  { label: "Kerjasama Industri", weight: 0.25 },
-  { label: "Pembiayaan Mandiri", weight: 0.15 },
-];
-
-function distribute(total: number, items: { label: string; weight: number }[]) {
-  const values = items.map((item) => Math.floor(total * item.weight));
-  values[0] += total - values.reduce((sum, value) => sum + value, 0);
-  return items.map((item, index) => ({
-    label: item.label,
-    value: values[index],
-  }));
-}
 
 /* =========================================================
    FILTER
@@ -303,8 +186,8 @@ const ALL: Filters = {
   category: "Semua Kategori",
 };
 
-function filterRows(f: Filters, ignore: Dim[] = []) {
-  return DATA.filter(
+function filterRows(rows: Row[], f: Filters, ignore: Dim[] = []) {
+  return rows.filter(
     (r) =>
       (ignore.includes("year") ||
         f.year === ALL.year ||
@@ -552,44 +435,19 @@ function SelectField({
   );
 }
 
-/* Tanggal pembaruan data: "Diperbarui: 14 Oktober 2026" */
-function UpdatedAt({
-  date,
-  className = "text-[12.5px]",
-}: {
-  date: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 font-medium text-[#667360] ${className}`}
-    >
-      <CalendarDays
-        size={13}
-        strokeWidth={1.8}
-        aria-hidden
-        className="shrink-0 text-[#3F6B28]"
-      />
-      Diperbarui:
-      <time dateTime={date} className="font-semibold text-[#31551F]">
-        {formatDate(date)}
-      </time>
-    </span>
-  );
-}
-
 /* Kartu dengan header hijau di tengah (mengikuti gaya kartu statistik PCR).
-   Bagian bawah kartu berisi catatan (opsional) dan tanggal pembaruan data. */
+   Bagian bawah kartu hanya tampil kalau ada catatan. */
 function PanelShell({
   title,
   children,
   note,
-  updatedAt = DATA_UPDATED_AT,
+  filters,
 }: {
   title: string;
   children: ReactNode;
   note?: string;
-  updatedAt?: string;
+  /** filter milik panel ini (tampil di bawah judul) */
+  filters?: ReactNode;
 }) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
@@ -598,16 +456,15 @@ function PanelShell({
       </h3>
 
       <div className="flex flex-1 flex-col p-4 md:p-5">
+        {filters && <div className="mb-4">{filters}</div>}
+
         <div className="flex-1">{children}</div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-[#E7EDE3] pt-3">
-          {note ? (
+        {note && (
+          <div className="mt-4 border-t border-[#E7EDE3] pt-3">
             <p className="text-[11px] leading-5 text-[#667360]">{note}</p>
-          ) : (
-            <span />
-          )}
-          <UpdatedAt date={updatedAt} className="text-[11px]" />
-        </div>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -1335,7 +1192,8 @@ function DataTable<T>({
 /* =========================================================
    PANEL GRAFIK
    Satu data, beberapa tampilan: garis, batang, lingkaran, tabel.
-   Tombol: ganti tampilan, kembalikan ke awal, unduh CSV.
+   Tombol: ganti tampilan, kembalikan ke awal, unduh gambar (PNG),
+   unduh data (CSV).
 ========================================================= */
 
 type Mode = "line" | "bar" | "pie" | "table";
@@ -1371,6 +1229,301 @@ function downloadCsv(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/* =========================================================
+   UNDUH GAMBAR (PNG)
+   Grafik di halaman berupa SVG. Untuk PNG, SVG disalin lalu
+   digambar ke canvas bersama judul panel, legenda, dan (untuk
+   diagram lingkaran) daftar nilainya, supaya gambar yang diunduh
+   lengkap seperti yang terlihat di halaman.
+========================================================= */
+
+/* Font cadangan untuk teks di dalam SVG. SVG yang dijadikan gambar tidak
+   bisa memakai font web, jadi Poppins hanya terpakai kalau terpasang di
+   perangkat; kalau tidak, otomatis memakai font sans-serif lain. */
+const EXPORT_FONT_STACK = "Poppins, 'Segoe UI', Arial, sans-serif";
+
+/* Bungkus teks jadi beberapa baris sesuai lebar (font sudah diatur di ctx) */
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+) {
+  const lines: string[] = [];
+  let current = "";
+
+  text.split(" ").forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+
+    if (!current || ctx.measureText(next).width <= maxWidth) {
+      current = next;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  });
+
+  if (current) lines.push(current);
+
+  return lines;
+}
+
+/* Potong teks dengan "…" kalau melebihi lebar */
+function fitCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let out = text;
+  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) {
+    out = out.slice(0, -1);
+  }
+
+  return `${out.trimEnd()}…`;
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Gambar grafik tidak dapat dibuat."));
+    img.src = src;
+  });
+}
+
+async function downloadChartPng({
+  fileName,
+  title,
+  svg,
+  legend = [],
+  pieItems,
+}: {
+  fileName: string;
+  title: string;
+  svg: SVGSVGElement;
+  /** legenda grafik batang/garis */
+  legend?: LegendItem[];
+  /** diisi untuk diagram lingkaran: daftar nilai di sisi kanan */
+  pieItems?: { label: string; value: number }[];
+}) {
+  const font = poppins.style.fontFamily;
+
+  /* pastikan Poppins sudah termuat sebelum menggambar teks di canvas */
+  try {
+    await Promise.all([
+      document.fonts.load(`600 17px ${font}`),
+      document.fonts.load(`500 12px ${font}`),
+    ]);
+  } catch {
+    /* kalau gagal, canvas memakai font cadangan */
+  }
+
+  /* ukuran grafik */
+  const rect = svg.getBoundingClientRect();
+  const svgW = Math.round(Number(svg.getAttribute("width")) || rect.width);
+  const svgH = Math.round(Number(svg.getAttribute("height")) || rect.height);
+
+  /* salin SVG, beri ukuran dan font supaya bisa digambar sebagai gambar */
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("width", String(svgW));
+  clone.setAttribute("height", String(svgH));
+  clone.setAttribute("font-family", EXPORT_FONT_STACK);
+
+  const xml = new XMLSerializer().serializeToString(clone);
+  const img = await loadImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
+  );
+
+  /* ---------- ukuran dan tata letak ---------- */
+
+  const measure = document.createElement("canvas").getContext("2d");
+  if (!measure) throw new Error("Canvas tidak tersedia.");
+
+  const SCALE = 2;
+  const PAD = 24;
+  const GAP = 32;
+  const LIST_W = 340;
+  const ROW_H = 30;
+  const LEGEND_ROW_H = 24;
+  const LEGEND_GAP = 20;
+
+  const contentW = pieItems ? svgW + GAP + LIST_W : svgW;
+  const width = Math.max(contentW + PAD * 2, 560);
+  const innerW = width - PAD * 2;
+
+  /* judul */
+  measure.font = `600 17px ${font}`;
+  const titleLines = wrapCanvasText(measure, title, width - 48);
+  const titleH = titleLines.length * 24 + 28;
+
+  /* legenda (grafik batang dan garis) */
+  measure.font = `500 12px ${font}`;
+  const itemWidth = (item: LegendItem) =>
+    18 + measure.measureText(item.label).width;
+
+  const legendRows: LegendItem[][] = [];
+  let currentRow: LegendItem[] = [];
+  let currentW = 0;
+
+  legend.forEach((item) => {
+    const w = itemWidth(item);
+
+    if (currentRow.length && currentW + LEGEND_GAP + w > innerW) {
+      legendRows.push(currentRow);
+      currentRow = [];
+      currentW = 0;
+    }
+
+    currentW += (currentRow.length ? LEGEND_GAP : 0) + w;
+    currentRow.push(item);
+  });
+
+  if (currentRow.length) legendRows.push(currentRow);
+
+  const legendH = legendRows.length ? legendRows.length * LEGEND_ROW_H + 12 : 0;
+
+  /* area grafik */
+  const listH = pieItems ? pieItems.length * ROW_H : 0;
+  const areaH = Math.max(svgH, listH);
+
+  const legendTop = titleH + PAD;
+  const chartTop = legendTop + legendH;
+  const height = chartTop + areaH + PAD;
+
+  /* ---------- gambar ke canvas ---------- */
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width * SCALE;
+  canvas.height = height * SCALE;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas tidak tersedia.");
+
+  ctx.scale(SCALE, SCALE);
+
+  /* latar putih */
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, height);
+
+  /* judul (bar hijau) */
+  ctx.fillStyle = "#31551F";
+  ctx.fillRect(0, 0, width, titleH);
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `600 17px ${font}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  titleLines.forEach((line, i) => {
+    ctx.fillText(line, width / 2, 26 + i * 24);
+  });
+
+  /* legenda */
+  ctx.font = `500 12px ${font}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+
+  legendRows.forEach((legendRow, rowIndex) => {
+    const rowW = legendRow.reduce(
+      (sum, item, i) => sum + itemWidth(item) + (i ? LEGEND_GAP : 0),
+      0
+    );
+    const cy = legendTop + rowIndex * LEGEND_ROW_H + LEGEND_ROW_H / 2;
+    let x = (width - rowW) / 2;
+
+    legendRow.forEach((item) => {
+      if (item.line) {
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x, cy);
+        ctx.lineTo(x + 14, cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(x, cy - 5, 10, 10);
+      }
+
+      ctx.fillStyle = "#4A5646";
+      ctx.fillText(item.label, x + 18, cy + 0.5);
+
+      x += itemWidth(item) + LEGEND_GAP;
+    });
+  });
+
+  /* grafik */
+  const chartX = pieItems ? PAD : (width - svgW) / 2;
+  ctx.drawImage(img, chartX, chartTop + (areaH - svgH) / 2, svgW, svgH);
+
+  /* daftar nilai diagram lingkaran */
+  if (pieItems) {
+    const total = pieItems.reduce((sum, item) => sum + item.value, 0);
+    const listX = PAD + svgW + GAP;
+    const listW = width - PAD - listX;
+    const listTop = chartTop + (areaH - listH) / 2;
+
+    pieItems.forEach((item, i) => {
+      const cy = listTop + i * ROW_H + ROW_H / 2;
+      const frac = total > 0 ? item.value / total : 0;
+      const value = `${item.value} (${(frac * 100).toFixed(2)}%)`;
+
+      /* nilai (rata kanan) */
+      ctx.font = `600 12px ${font}`;
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#1F2A1A";
+      ctx.fillText(value, listX + listW, cy);
+      const valueW = ctx.measureText(value).width;
+
+      /* kotak warna + nama */
+      ctx.fillStyle = PIE_COLORS[i % PIE_COLORS.length];
+      ctx.fillRect(listX, cy - 5, 10, 10);
+
+      ctx.font = `500 12px ${font}`;
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#2F3B2A";
+      ctx.fillText(
+        fitCanvasText(ctx, item.label, listW - valueW - 34),
+        listX + 20,
+        cy + 0.5
+      );
+
+      /* garis pemisah */
+      if (i < pieItems.length - 1) {
+        const lineY = listTop + (i + 1) * ROW_H + 0.5;
+        ctx.strokeStyle = "#E7EDE3";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(listX, lineY);
+        ctx.lineTo(listX + listW, lineY);
+        ctx.stroke();
+      }
+    });
+  }
+
+  /* ---------- simpan sebagai file ---------- */
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/png")
+  );
+
+  if (!blob) throw new Error("File PNG gagal dibuat.");
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${fileName}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const toolbarButton =
+  "flex h-8 w-8 items-center justify-center rounded-lg text-[#31551F] transition-colors duration-300 enabled:hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] disabled:cursor-not-allowed disabled:opacity-40";
+
 function ChartPanel({
   title,
   labels,
@@ -1385,7 +1538,9 @@ function ChartPanel({
   yTitle,
   note,
   fileName,
-  updatedAt = DATA_UPDATED_AT,
+  fileTag = "",
+  updatedAt: updatedAtProp,
+  filters,
 }: {
   title: string;
   labels: string[];
@@ -1402,10 +1557,18 @@ function ChartPanel({
   yTitle?: string;
   note?: string;
   fileName: string;
-  /** tanggal pembaruan data panel ini ("YYYY-MM-DD"); default tanggal umum */
+  /** tambahan nama file unduhan, mis. "-2026-teknik-informatika" */
+  fileTag?: string;
+  /** filter milik panel ini */
+  filters?: ReactNode;
+  /** tanggal pembaruan data panel ini ("YYYY-MM-DD"); dipakai untuk nama file */
   updatedAt?: string;
 }) {
   const [mode, setMode] = useState<Mode>(defaultMode);
+  const [pngState, setPngState] = useState<"idle" | "busy" | "error">("idle");
+  const chartRef = useRef<HTMLDivElement>(null);
+  const updatedFromContext = useContext(UpdatedAtContext);
+  const updatedAt = updatedAtProp ?? updatedFromContext;
 
   const all = overlay ? [...series, overlay] : series;
   const names = fullLabels ?? labels;
@@ -1434,8 +1597,36 @@ function ChartPanel({
   }));
   const showLegend = !(vary && series.length === 1 && !overlay);
 
+  const baseName = `${fileName}${fileTag}-${updatedAt}`;
+
+  const pieItems = labels.map((_, i) => ({
+    label: names[i],
+    value: series[0].data[i],
+  }));
+
+  const handlePng = async () => {
+    const svg = chartRef.current?.querySelector("svg");
+    if (!svg || pngState === "busy") return;
+
+    setPngState("busy");
+
+    try {
+      await downloadChartPng({
+        fileName: baseName,
+        title,
+        svg,
+        legend: mode === "pie" || !showLegend ? [] : legendItems,
+        pieItems: mode === "pie" ? pieItems : undefined,
+      });
+      setPngState("idle");
+    } catch {
+      setPngState("error");
+      window.setTimeout(() => setPngState("idle"), 3500);
+    }
+  };
+
   return (
-    <PanelShell title={title} note={note} updatedAt={updatedAt}>
+    <PanelShell title={title} note={note} filters={filters}>
       {/* TOOLBAR */}
       <div className="mb-3 flex items-center justify-end gap-1">
         {MODE_ORDER.filter((m) => modes.includes(m)).map((m) => {
@@ -1468,9 +1659,26 @@ function ChartPanel({
           title="Kembalikan tampilan awal"
           aria-label="Kembalikan tampilan awal"
           onClick={() => setMode(defaultMode)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#31551F] transition-colors duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+          className={toolbarButton}
         >
           <RotateCcw size={16} strokeWidth={1.9} aria-hidden />
+        </button>
+
+        <button
+          type="button"
+          title={
+            mode === "table"
+              ? "Pilih tampilan grafik untuk mengunduh gambar"
+              : pngState === "busy"
+                ? "Membuat gambar..."
+                : "Unduh grafik (PNG)"
+          }
+          aria-label="Unduh grafik (PNG)"
+          disabled={mode === "table" || pngState === "busy"}
+          onClick={handlePng}
+          className={toolbarButton}
+        >
+          <ImageIcon size={16} strokeWidth={1.9} aria-hidden />
         </button>
 
         <button
@@ -1479,42 +1687,47 @@ function ChartPanel({
           aria-label="Unduh data (CSV)"
           onClick={() =>
             downloadCsv(
-              `${fileName}-${updatedAt}`,
+              baseName,
               [labelHeader, ...all.map((s) => s.name)],
               tableRows.map((r) => [r.label, ...r.values])
             )
           }
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#31551F] transition-colors duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+          className={toolbarButton}
         >
           <Download size={16} strokeWidth={1.9} aria-hidden />
         </button>
       </div>
 
-      {/* ISI */}
-      {(mode === "bar" || mode === "line") && (
-        <>
-          {showLegend && <Legend items={legendItems} />}
-          <XYChart
-            labels={labels}
-            series={series}
-            overlay={overlay}
-            kind={mode}
-            percent={percent}
-            vary={vary && mode === "bar"}
-            yTitle={yTitle}
-            ariaLabel={title}
-          />
-        </>
+      {pngState === "error" && (
+        <p
+          role="alert"
+          className="mb-3 text-right text-[11.5px] font-medium text-[#B91C1C]"
+        >
+          Gagal membuat gambar. Coba lagi.
+        </p>
       )}
 
-      {mode === "pie" && (
-        <PieView
-          ariaLabel={title}
-          items={labels.map((_, i) => ({
-            label: names[i],
-            value: series[0].data[i],
-          }))}
-        />
+      {/* ISI */}
+      {mode !== "table" && (
+        <div ref={chartRef}>
+          {(mode === "bar" || mode === "line") && (
+            <>
+              {showLegend && <Legend items={legendItems} />}
+              <XYChart
+                labels={labels}
+                series={series}
+                overlay={overlay}
+                kind={mode}
+                percent={percent}
+                vary={vary && mode === "bar"}
+                yTitle={yTitle}
+                ariaLabel={title}
+              />
+            </>
+          )}
+
+          {mode === "pie" && <PieView ariaLabel={title} items={pieItems} />}
+        </div>
       )}
 
       {mode === "table" && (
@@ -1574,7 +1787,7 @@ const yearCols: Col<YearRow>[] = [
   { key: "buku", header: "Buku", value: (r) => r.buku },
 ];
 
-type DosenRow = (typeof DOSEN)[number];
+type DosenRow = DosenItem;
 
 const dosenCols: Col<DosenRow>[] = [
   { key: "name", header: "Nama", value: (r) => r.name, bold: true },
@@ -1604,92 +1817,291 @@ const programCols: Col<ProgramRow>[] = [
 ];
 
 /* =========================================================
-   HALAMAN INFOGRAFIS
+   FILTER PER PANEL
+   Setiap grafik/tabel punya filter sendiri. Tiap panel hanya
+   menampilkan filter yang masuk akal untuknya (mis. grafik per
+   tahun tidak punya filter tahun). Unduhan PNG dan CSV mengikuti
+   filter panel itu.
 ========================================================= */
 
-const STATUS_NOTE =
-  "Data yang ditampilkan pada grafik hanya data yang berstatus Diterima dan Direview.";
+type FilterDim = "year" | "jurusan" | "prodi";
 
-export default function InfografisPage() {
-  const [filters, setFilters] = useState<Filters>({ ...ALL });
+type PanelFilterState = Pick<Filters, FilterDim>;
 
-  const setFilter = (key: Dim, value: string) =>
+const PANEL_ALL: PanelFilterState = {
+  year: ALL.year,
+  jurusan: ALL.jurusan,
+  prodi: ALL.prodi,
+};
+
+type PanelContext = {
+  /** baris data setelah difilter (dimensi yang tidak dipakai panel diabaikan) */
+  rows: Row[];
+  filters: PanelFilterState;
+  /** prodi yang tampil menurut filter jurusan panel */
+  visibleProdi: ProdiInfo[];
+  data: InfografisData;
+};
+
+const slug = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+function usePanelFilters(data: InfografisData, dims: FilterDim[]) {
+  const [filters, setFilters] = useState<PanelFilterState>({ ...PANEL_ALL });
+
+  const setFilter = (key: FilterDim, value: string) =>
     setFilters((current) => ({
       ...current,
       [key]: value,
-      ...(key === "jurusan" ? { prodi: ALL.prodi } : {}),
+      ...(key === "jurusan" ? { prodi: PANEL_ALL.prodi } : {}),
     }));
 
-  const hasActiveFilter = (Object.keys(ALL) as Dim[]).some(
-    (key) => filters[key] !== ALL[key]
-  );
+  const reset = () => setFilters({ ...PANEL_ALL });
+
+  const active = dims.some((dim) => filters[dim] !== PANEL_ALL[dim]);
 
   const visibleProdi = useMemo(
     () =>
-      PRODI.filter(
-        (p) => filters.jurusan === ALL.jurusan || p.jurusan === filters.jurusan
+      data.prodi.filter(
+        (p) =>
+          !dims.includes("jurusan") ||
+          filters.jurusan === ALL.jurusan ||
+          p.jurusan === filters.jurusan
       ),
-    [filters.jurusan]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.prodi, filters.jurusan]
   );
 
-  /* ---------- DATA TURUNAN ---------- */
+  const rows = useMemo(() => {
+    const ignore = (
+      ["year", "jurusan", "prodi", "category"] as Dim[]
+    ).filter((dim) => dim === "category" || !dims.includes(dim as FilterDim));
 
-  /* total: mengikuti semua filter */
-  const totals = useMemo(() => aggregate(filterRows(filters)), [filters]);
+    return filterRows(data.rows, { ...ALL, ...filters }, ignore);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.rows, filters]);
 
-  /* per tahun: menampilkan semua tahun, mengikuti filter lain */
-  const yearStats = useMemo<YearRow[]>(() => {
-    const rows = filterRows(filters, ["year"]);
-    return YEARS.map((year) => ({
-      year,
-      ...aggregate(rows.filter((r) => r.year === year)),
-    }));
-  }, [filters]);
+  /* untuk nama file unduhan, hanya filter yang sedang dipakai */
+  const fileTag = dims
+    .filter((dim) => filters[dim] !== PANEL_ALL[dim])
+    .map((dim) => `-${slug(filters[dim])}`)
+    .join("");
 
-  /* per jurusan: mengikuti filter tahun dan kategori dosen */
-  const jurusanStats = useMemo(() => {
-    const rows = filterRows(filters, ["jurusan", "prodi"]);
-    return JURUSAN.map((name) => ({
-      name,
-      ...aggregate(rows.filter((r) => r.jurusan === name)),
-    }));
-  }, [filters]);
-
-  /* per prodi: mengikuti filter tahun, jurusan, dan kategori dosen */
-  const prodiStats = useMemo(() => {
-    const rows = filterRows(filters, ["prodi"]);
-    return visibleProdi.map((p) => ({
-      name: p.name,
-      short: p.short,
-      ...aggregate(rows.filter((r) => r.prodi === p.name)),
-    }));
-  }, [filters, visibleProdi]);
-
-  const dosenRows = useMemo(
-    () =>
-      DOSEN.filter(
-        (d) =>
-          (filters.jurusan === ALL.jurusan || d.jurusan === filters.jurusan) &&
-          (filters.prodi === ALL.prodi ||
-            PRODI.find((p) => p.name === filters.prodi)?.short === d.prodi)
-      ),
-    [filters.jurusan, filters.prodi]
+  const bar = (
+    <PanelFilterBar
+      data={data}
+      dims={dims}
+      filters={filters}
+      visibleProdi={visibleProdi}
+      onChange={setFilter}
+      onReset={reset}
+      active={active}
+    />
   );
 
-  const mk = (name: string, color: string, data: number[]): Series => ({
-    name,
-    color,
-    data,
-  });
+  const ctx: PanelContext = { rows, filters, visibleProdi, data };
 
-  const yearLabels = yearStats.map((y) => String(y.year));
-  const prodiShort = prodiStats.map((p) => p.short);
-  const prodiNames = prodiStats.map((p) => p.name);
+  return { ctx, bar, fileTag };
+}
 
-  const programPenelitian = distribute(totals.penelitian, PROGRAM_PENELITIAN);
-  const jenisPengabdian = distribute(totals.pengabdian, JENIS_PENGABDIAN);
+function PanelFilterBar({
+  data,
+  dims,
+  filters,
+  visibleProdi,
+  onChange,
+  onReset,
+  active,
+}: {
+  data: InfografisData;
+  dims: FilterDim[];
+  filters: PanelFilterState;
+  visibleProdi: ProdiInfo[];
+  onChange: (key: FilterDim, value: string) => void;
+  onReset: () => void;
+  active: boolean;
+}) {
+  const uid = useId();
+
+  if (dims.length === 0) return null;
+
+  const columns =
+    dims.length === 3
+      ? "sm:grid-cols-3"
+      : dims.length === 2
+        ? "sm:grid-cols-2"
+        : "sm:grid-cols-1";
 
   return (
+    <div className="rounded-xl border border-[#E7EDE3] bg-[#F6F9F3] p-3">
+      <div className={`grid grid-cols-1 gap-3 ${columns}`}>
+        {dims.includes("year") && (
+          <div>
+            <FieldLabel htmlFor={`${uid}-tahun`}>Tahun</FieldLabel>
+            <SelectField
+              id={`${uid}-tahun`}
+              value={filters.year}
+              options={[
+                { value: ALL.year, label: ALL.year },
+                ...data.years.map((y) => ({ value: String(y), label: String(y) })),
+              ]}
+              onChange={(v) => onChange("year", v)}
+            />
+          </div>
+        )}
+
+        {dims.includes("jurusan") && (
+          <div>
+            <FieldLabel htmlFor={`${uid}-jurusan`}>Jurusan</FieldLabel>
+            <SelectField
+              id={`${uid}-jurusan`}
+              value={filters.jurusan}
+              options={[
+                { value: ALL.jurusan, label: ALL.jurusan },
+                ...data.jurusan.map((j) => ({ value: j, label: j })),
+              ]}
+              onChange={(v) => onChange("jurusan", v)}
+            />
+          </div>
+        )}
+
+        {dims.includes("prodi") && (
+          <div>
+            <FieldLabel htmlFor={`${uid}-prodi`}>Program Studi</FieldLabel>
+            <SelectField
+              id={`${uid}-prodi`}
+              value={filters.prodi}
+              options={[
+                { value: ALL.prodi, label: ALL.prodi },
+                ...visibleProdi.map((p) => ({ value: p.name, label: p.name })),
+              ]}
+              onChange={(v) => onChange("prodi", v)}
+            />
+          </div>
+        )}
+      </div>
+
+      {active && (
+        <div className="mt-2.5 flex justify-end">
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28]"
+          >
+            <RotateCcw size={13} strokeWidth={2} aria-hidden />
+            Reset Filter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Grafik dengan filter sendiri. `build` menerima data yang sudah
+   difilter dan mengembalikan props ChartPanel. */
+function FilteredChart({
+  data,
+  dims,
+  build,
+}: {
+  data: InfografisData;
+  dims: FilterDim[];
+  build: (
+    ctx: PanelContext
+  ) => Omit<ComponentProps<typeof ChartPanel>, "filters" | "fileTag">;
+}) {
+  const { ctx, bar, fileTag } = usePanelFilters(data, dims);
+
+  return <ChartPanel {...build(ctx)} filters={bar} fileTag={fileTag} />;
+}
+
+/* Kartu (tabel) dengan filter sendiri */
+function FilteredShell({
+  data,
+  dims,
+  title,
+  note,
+  children,
+}: {
+  data: InfografisData;
+  dims: FilterDim[];
+  title: string;
+  note?: string;
+  children: (ctx: PanelContext) => ReactNode;
+}) {
+  const { ctx, bar } = usePanelFilters(data, dims);
+
+  return (
+    <PanelShell title={title} note={note} filters={bar}>
+      {children(ctx)}
+    </PanelShell>
+  );
+}
+
+const mk = (name: string, color: string, data: number[]): Series => ({
+  name,
+  color,
+  data,
+});
+
+/* total per tahun, dari baris yang sudah difilter */
+function perYear(rows: Row[], years: number[]): YearRow[] {
+  return years.map((year) => ({
+    year,
+    ...aggregate(rows.filter((r) => r.year === year)),
+  }));
+}
+
+/* =========================================================
+   HALAMAN INFOGRAFIS
+========================================================= */
+
+export default function InfografisPage() {
+  const [data, setData] = useState<InfografisData>(EMPTY_DATA);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_URL}/infografis`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+
+        if (!res.ok) throw new Error(`Terjadi kesalahan (kode ${res.status}).`);
+
+        const json = await res.json();
+
+        if (!cancelled) {
+          setData({ ...EMPTY_DATA, ...(json.data ?? {}) });
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Gagal memuat data infografis."
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <UpdatedAtContext.Provider value={data.updated_at}>
     <main
       className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
@@ -1766,212 +2178,178 @@ export default function InfografisPage() {
           <SectionTitle
             eyebrow="Statistik P2M"
             title="Statistik Keseluruhan P2M Polibatam"
-            description="Total penelitian, pengabdian, publikasi, dan HKI. Setiap grafik dapat diganti tampilannya (garis, batang, atau data) dan diunduh sebagai CSV."
+            description="Total penelitian, pengabdian, publikasi, dan HKI. Setiap grafik punya filter sendiri, bisa diganti tampilannya (garis, batang, atau data), dan diunduh sebagai gambar (PNG) atau data (CSV) sesuai filternya."
           />
 
-          {/* ---------- FILTER ---------- */}
-          <Reveal>
-            <div className="rounded-2xl border border-[#D9E2D3] bg-white p-4 shadow-[0_8px_30px_rgba(31,42,26,0.05)] md:p-5">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <FieldLabel htmlFor="f-tahun">Tahun</FieldLabel>
-                  <SelectField
-                    id="f-tahun"
-                    value={filters.year}
-                    options={[
-                      { value: ALL.year, label: ALL.year },
-                      ...YEARS.map((y) => ({
-                        value: String(y),
-                        label: String(y),
-                      })),
-                    ]}
-                    onChange={(v) => setFilter("year", v)}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel htmlFor="f-jurusan">Jurusan</FieldLabel>
-                  <SelectField
-                    id="f-jurusan"
-                    value={filters.jurusan}
-                    options={[
-                      { value: ALL.jurusan, label: ALL.jurusan },
-                      ...JURUSAN.map((j) => ({ value: j, label: j })),
-                    ]}
-                    onChange={(v) => setFilter("jurusan", v)}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel htmlFor="f-prodi">Program Studi</FieldLabel>
-                  <SelectField
-                    id="f-prodi"
-                    value={filters.prodi}
-                    options={[
-                      { value: ALL.prodi, label: ALL.prodi },
-                      ...visibleProdi.map((p) => ({
-                        value: p.name,
-                        label: p.name,
-                      })),
-                    ]}
-                    onChange={(v) => setFilter("prodi", v)}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel htmlFor="f-kategori">Kategori Dosen</FieldLabel>
-                  <SelectField
-                    id="f-kategori"
-                    value={filters.category}
-                    options={[
-                      { value: ALL.category, label: ALL.category },
-                      ...CATEGORIES.map((c) => ({
-                        value: c.code,
-                        label: c.label,
-                      })),
-                    ]}
-                    onChange={(v) => setFilter("category", v)}
-                  />
-                </div>
-              </div>
-            </div>
-          </Reveal>
-
-          {/* catatan status data, tanggal pembaruan, dan reset filter
-              (baris sederhana, tanpa kotak) */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-            <p className="inline-flex items-center gap-2 text-[12.5px] leading-5 text-[#667360]">
-              <Info
-                size={15}
-                strokeWidth={1.8}
-                aria-hidden
-                className="shrink-0 text-[#3F6B28]"
-              />
-              {STATUS_NOTE}
+          {error && (
+            <p
+              role="alert"
+              className="mt-5 rounded-xl bg-[#FFF1F1] px-4 py-3 text-[13px] text-[#B91C1C]"
+            >
+              {error}
             </p>
+          )}
 
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <UpdatedAt date={DATA_UPDATED_AT} />
-
-              {hasActiveFilter && (
-                <button
-                  type="button"
-                  onClick={() => setFilters({ ...ALL })}
-                  className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28]"
-                >
-                  <RotateCcw size={14} strokeWidth={2} aria-hidden />
-                  Reset Filter
-                </button>
-              )}
-            </div>
-          </div>
-
+          {loading ? (
+            <p className="mt-10 text-center text-[13px] text-[#667360]">
+              Memuat data infografis...
+            </p>
+          ) : (
           <div className="mt-6 space-y-5">
             {/* ---------- TOTAL + JURUSAN ---------- */}
             <div className="grid gap-5 lg:grid-cols-2">
               <Reveal className="h-full">
-                <ChartPanel
-                  title="Total Penelitian, Pengabdian, Publikasi dan HKI"
-                  fileName="total-p2m"
-                  labelHeader="Kegiatan"
-                  labels={["Penelitian", "Pengabdian", "Publikasi", "HKI"]}
-                  series={[
-                    mk("Total", SERIES[0], [
-                      totals.penelitian,
-                      totals.pengabdian,
-                      totals.publikasi,
-                      totals.hki,
-                    ]),
-                  ]}
-                  vary
-                  modes={["bar", "line", "pie", "table"]}
-                  defaultMode="bar"
-                  note={STATUS_NOTE}
+                <FilteredChart
+                  data={data}
+                  dims={["year", "jurusan", "prodi"]}
+                  build={({ rows }) => {
+                    const t = aggregate(rows);
+
+                    return {
+                      title: "Total Penelitian, Pengabdian, Publikasi dan HKI",
+                      fileName: "total-p2m",
+                      labelHeader: "Kegiatan",
+                      labels: ["Penelitian", "Pengabdian", "Publikasi", "HKI"],
+                      series: [
+                        mk("Total", SERIES[0], [
+                          t.penelitian,
+                          t.pengabdian,
+                          t.publikasi,
+                          t.hki,
+                        ]),
+                      ],
+                      vary: true,
+                      modes: ["bar", "line", "pie", "table"],
+                      defaultMode: "bar",
+                    };
+                  }}
                 />
               </Reveal>
 
               <Reveal delay={110} className="h-full">
-                <ChartPanel
-                  title="Penelitian, Pengabdian, Publikasi dan HKI Jurusan"
-                  fileName="p2m-per-jurusan"
-                  labelHeader="Jurusan"
-                  labels={jurusanStats.map((j) => j.name)}
-                  series={[
-                    mk("Penelitian", SERIES[0], jurusanStats.map((j) => j.penelitian)),
-                    mk("Pengabdian", SERIES[1], jurusanStats.map((j) => j.pengabdian)),
-                    mk("Publikasi", SERIES[2], jurusanStats.map((j) => j.publikasi)),
-                    mk("HKI", SERIES[3], jurusanStats.map((j) => j.hki)),
-                  ]}
-                  modes={["bar", "line", "table"]}
-                  defaultMode="bar"
-                  note={STATUS_NOTE}
+                <FilteredChart
+                  data={data}
+                  dims={["year"]}
+                  build={({ rows }) => {
+                    const stats = data.jurusan.map((name) => ({
+                      name,
+                      ...aggregate(rows.filter((r) => r.jurusan === name)),
+                    }));
+
+                    return {
+                      title: "Penelitian, Pengabdian, Publikasi dan HKI Jurusan",
+                      fileName: "p2m-per-jurusan",
+                      labelHeader: "Jurusan",
+                      labels: stats.map((j) => j.name),
+                      series: [
+                        mk("Penelitian", SERIES[0], stats.map((j) => j.penelitian)),
+                        mk("Pengabdian", SERIES[1], stats.map((j) => j.pengabdian)),
+                        mk("Publikasi", SERIES[2], stats.map((j) => j.publikasi)),
+                        mk("HKI", SERIES[3], stats.map((j) => j.hki)),
+                      ],
+                      modes: ["bar", "line", "table"],
+                      defaultMode: "bar",
+                    };
+                  }}
                 />
               </Reveal>
             </div>
 
             {/* ---------- PARTISIPASI DOSEN ---------- */}
             <Reveal>
-              <ChartPanel
-                title="Grafik Persentase Partisipasi Dosen"
-                fileName="partisipasi-dosen"
-                labelHeader="Tahun"
-                labels={yearLabels}
-                series={[
-                  mk("Penelitian", SERIES[0], yearStats.map((y) => pct2(y.partPenelitian, y.dosen))),
-                  mk("Pengabdian", SERIES[1], yearStats.map((y) => pct2(y.partPengabdian, y.dosen))),
-                  mk("Publikasi", SERIES[2], yearStats.map((y) => pct2(y.partPublikasi, y.dosen))),
-                ]}
-                percent
-                yTitle="Persen (%)"
-                modes={["line", "bar", "table"]}
-                defaultMode="line"
-                note="Dosen Lanjut Study dan LWP tidak dihitung."
+              <FilteredChart
+                data={data}
+                dims={["jurusan", "prodi"]}
+                build={({ rows }) => {
+                  const stats = perYear(rows, data.years);
+
+                  return {
+                    title: "Grafik Persentase Partisipasi Dosen",
+                    fileName: "partisipasi-dosen",
+                    labelHeader: "Tahun",
+                    labels: stats.map((y) => String(y.year)),
+                    series: [
+                      mk("Penelitian", SERIES[0], stats.map((y) => pct2(y.partPenelitian, y.dosen))),
+                      mk("Pengabdian", SERIES[1], stats.map((y) => pct2(y.partPengabdian, y.dosen))),
+                      mk("Publikasi", SERIES[2], stats.map((y) => pct2(y.partPublikasi, y.dosen))),
+                    ],
+                    percent: true,
+                    yTitle: "Persen (%)",
+                    modes: ["line", "bar", "table"],
+                    defaultMode: "line",
+                    note: "Dihitung dari dosen yang terdaftar di Profil Peneliti.",
+                  };
+                }}
               />
             </Reveal>
 
             {/* ---------- TOTAL PER TAHUN ---------- */}
             <Reveal>
-              <ChartPanel
-                title="Total Penelitian, Pengabdian, Publikasi Per Tahun"
-                fileName="total-per-tahun"
-                labelHeader="Tahun"
-                labels={yearLabels}
-                series={[
-                  mk("Penelitian", SERIES[0], yearStats.map((y) => y.penelitian)),
-                  mk("Pengabdian", SERIES[1], yearStats.map((y) => y.pengabdian)),
-                  mk("Publikasi", SERIES[2], yearStats.map((y) => y.publikasi)),
-                ]}
-                yTitle="Total Data"
-                modes={["line", "bar", "table"]}
-                defaultMode="line"
+              <FilteredChart
+                data={data}
+                dims={["jurusan", "prodi"]}
+                build={({ rows }) => {
+                  const stats = perYear(rows, data.years);
+
+                  return {
+                    title: "Total Penelitian, Pengabdian, Publikasi Per Tahun",
+                    fileName: "total-per-tahun",
+                    labelHeader: "Tahun",
+                    labels: stats.map((y) => String(y.year)),
+                    series: [
+                      mk("Penelitian", SERIES[0], stats.map((y) => y.penelitian)),
+                      mk("Pengabdian", SERIES[1], stats.map((y) => y.pengabdian)),
+                      mk("Publikasi", SERIES[2], stats.map((y) => y.publikasi)),
+                    ],
+                    yTitle: "Total Data",
+                    modes: ["line", "bar", "table"],
+                    defaultMode: "line",
+                  };
+                }}
               />
             </Reveal>
 
             {/* ---------- PERBANDINGAN PER TAHUN ---------- */}
             <div className="grid gap-5 lg:grid-cols-2">
               <Reveal className="h-full">
-                <ChartPanel
-                  title="Perbandingan Penelitian Per Tahun"
-                  fileName="penelitian-per-tahun"
-                  labelHeader="Tahun"
-                  labels={yearLabels}
-                  series={[mk("Penelitian", SERIES[0], yearStats.map((y) => y.penelitian))]}
-                  vary
-                  modes={["pie", "bar", "line", "table"]}
-                  defaultMode="pie"
+                <FilteredChart
+                  data={data}
+                  dims={["jurusan", "prodi"]}
+                  build={({ rows }) => {
+                    const stats = perYear(rows, data.years);
+
+                    return {
+                      title: "Perbandingan Penelitian Per Tahun",
+                      fileName: "penelitian-per-tahun",
+                      labelHeader: "Tahun",
+                      labels: stats.map((y) => String(y.year)),
+                      series: [mk("Penelitian", SERIES[0], stats.map((y) => y.penelitian))],
+                      vary: true,
+                      modes: ["pie", "bar", "line", "table"],
+                      defaultMode: "pie",
+                    };
+                  }}
                 />
               </Reveal>
 
               <Reveal delay={110} className="h-full">
-                <ChartPanel
-                  title="Perbandingan Publikasi Ilmiah Per Tahun"
-                  fileName="publikasi-per-tahun"
-                  labelHeader="Tahun"
-                  labels={yearLabels}
-                  series={[mk("Publikasi", SERIES[1], yearStats.map((y) => y.publikasi))]}
-                  vary
-                  modes={["pie", "bar", "line", "table"]}
-                  defaultMode="pie"
+                <FilteredChart
+                  data={data}
+                  dims={["jurusan", "prodi"]}
+                  build={({ rows }) => {
+                    const stats = perYear(rows, data.years);
+
+                    return {
+                      title: "Perbandingan Publikasi Ilmiah Per Tahun",
+                      fileName: "publikasi-per-tahun",
+                      labelHeader: "Tahun",
+                      labels: stats.map((y) => String(y.year)),
+                      series: [mk("Publikasi", SERIES[1], stats.map((y) => y.publikasi))],
+                      vary: true,
+                      modes: ["pie", "bar", "line", "table"],
+                      defaultMode: "pie",
+                    };
+                  }}
                 />
               </Reveal>
             </div>
@@ -1979,30 +2357,52 @@ export default function InfografisPage() {
             {/* ---------- PERBANDINGAN PER PRODI ---------- */}
             <div className="grid gap-5 lg:grid-cols-2">
               <Reveal className="h-full">
-                <ChartPanel
-                  title="Perbandingan Penelitian Per Prodi"
-                  fileName="penelitian-per-prodi"
-                  labelHeader="Program Studi"
-                  labels={prodiShort}
-                  fullLabels={prodiNames}
-                  series={[mk("Penelitian", SERIES[0], prodiStats.map((p) => p.penelitian))]}
-                  vary
-                  modes={["pie", "bar", "line", "table"]}
-                  defaultMode="pie"
+                <FilteredChart
+                  data={data}
+                  dims={["year", "jurusan"]}
+                  build={({ rows, visibleProdi }) => {
+                    const stats = visibleProdi.map((p) => ({
+                      ...p,
+                      ...aggregate(rows.filter((r) => r.prodi === p.name)),
+                    }));
+
+                    return {
+                      title: "Perbandingan Penelitian Per Prodi",
+                      fileName: "penelitian-per-prodi",
+                      labelHeader: "Program Studi",
+                      labels: stats.map((p) => p.short),
+                      fullLabels: stats.map((p) => p.name),
+                      series: [mk("Penelitian", SERIES[0], stats.map((p) => p.penelitian))],
+                      vary: true,
+                      modes: ["pie", "bar", "line", "table"],
+                      defaultMode: "pie",
+                    };
+                  }}
                 />
               </Reveal>
 
               <Reveal delay={110} className="h-full">
-                <ChartPanel
-                  title="Perbandingan Publikasi Ilmiah Per Prodi"
-                  fileName="publikasi-per-prodi"
-                  labelHeader="Program Studi"
-                  labels={prodiShort}
-                  fullLabels={prodiNames}
-                  series={[mk("Publikasi", SERIES[1], prodiStats.map((p) => p.publikasi))]}
-                  vary
-                  modes={["pie", "bar", "line", "table"]}
-                  defaultMode="pie"
+                <FilteredChart
+                  data={data}
+                  dims={["year", "jurusan"]}
+                  build={({ rows, visibleProdi }) => {
+                    const stats = visibleProdi.map((p) => ({
+                      ...p,
+                      ...aggregate(rows.filter((r) => r.prodi === p.name)),
+                    }));
+
+                    return {
+                      title: "Perbandingan Publikasi Ilmiah Per Prodi",
+                      fileName: "publikasi-per-prodi",
+                      labelHeader: "Program Studi",
+                      labels: stats.map((p) => p.short),
+                      fullLabels: stats.map((p) => p.name),
+                      series: [mk("Publikasi", SERIES[1], stats.map((p) => p.publikasi))],
+                      vary: true,
+                      modes: ["pie", "bar", "line", "table"],
+                      defaultMode: "pie",
+                    };
+                  }}
                 />
               </Reveal>
             </div>
@@ -2010,69 +2410,102 @@ export default function InfografisPage() {
             {/* ---------- JENIS PROGRAM ---------- */}
             <div className="grid gap-5 lg:grid-cols-2">
               <Reveal className="h-full">
-                <PanelShell title="Penelitian Berdasarkan Jenis Program">
-                  <DataTable
-                    rows={programPenelitian}
-                    columns={programCols}
-                    controls={false}
-                    minWidth={320}
-                    footer={
-                      <tr className="border-t border-[#D9E2D3] bg-[#F6F9F3]">
-                        <td className={td} />
-                        <td className={`${td} font-semibold`}>Total</td>
-                        <td
-                          className={`${td} text-right font-semibold text-[#31551F]`}
-                        >
-                          {totals.penelitian}
-                        </td>
-                      </tr>
-                    }
-                  />
-                </PanelShell>
+                <FilteredShell
+                  data={data}
+                  dims={["year", "jurusan", "prodi"]}
+                  title="Penelitian Berdasarkan Jenis Program"
+                >
+                  {({ rows }) => (
+                    <DataTable
+                      rows={sumMap(rows, "programPenelitian")}
+                      columns={programCols}
+                      controls={false}
+                      minWidth={320}
+                      footer={
+                        <tr className="border-t border-[#D9E2D3] bg-[#F6F9F3]">
+                          <td className={td} />
+                          <td className={`${td} font-semibold`}>Total</td>
+                          <td
+                            className={`${td} text-right font-semibold text-[#31551F]`}
+                          >
+                            {aggregate(rows).penelitian}
+                          </td>
+                        </tr>
+                      }
+                    />
+                  )}
+                </FilteredShell>
               </Reveal>
 
               <Reveal delay={110} className="h-full">
-                <ChartPanel
-                  title="Perbandingan Pengabdian Per Jenis"
-                  fileName="pengabdian-per-jenis"
-                  labelHeader="Jenis"
-                  labels={jenisPengabdian.map((j) => j.label)}
-                  series={[
-                    mk("Pengabdian", SERIES[1], jenisPengabdian.map((j) => j.value)),
-                  ]}
-                  vary
-                  modes={["pie", "bar", "line", "table"]}
-                  defaultMode="pie"
+                <FilteredChart
+                  data={data}
+                  dims={["year", "jurusan", "prodi"]}
+                  build={({ rows }) => {
+                    const jenis = sumMap(rows, "jenisPengabdian");
+
+                    return {
+                      title: "Perbandingan Pengabdian Per Jenis",
+                      fileName: "pengabdian-per-jenis",
+                      labelHeader: "Jenis",
+                      labels: jenis.map((j) => j.label),
+                      series: [mk("Pengabdian", SERIES[1], jenis.map((j) => j.value))],
+                      vary: true,
+                      modes: ["pie", "bar", "line", "table"],
+                      defaultMode: "pie",
+                    };
+                  }}
                 />
               </Reveal>
             </div>
 
             {/* ---------- TABEL PER TAHUN ---------- */}
             <Reveal>
-              <PanelShell title="Data Statistik Keseluruhan Penelitian, Pengabdian, dan Publikasi Per Tahun">
-                <DataTable
-                  rows={yearStats}
-                  columns={yearCols}
-                  minWidth={1200}
-                  defaultSort={{ key: "year", dir: "desc" }}
-                />
-              </PanelShell>
+              <FilteredShell
+                data={data}
+                dims={["jurusan", "prodi"]}
+                title="Data Statistik Keseluruhan Penelitian, Pengabdian, dan Publikasi Per Tahun"
+              >
+                {({ rows }) => (
+                  <DataTable
+                    rows={perYear(rows, data.years)}
+                    columns={yearCols}
+                    minWidth={1200}
+                    defaultSort={{ key: "year", dir: "desc" }}
+                  />
+                )}
+              </FilteredShell>
             </Reveal>
 
             {/* ---------- TABEL DOSEN ---------- */}
             <Reveal>
-              <PanelShell title="Data Kinerja Penelitian, Pengabdian, dan Publikasi Seluruh Dosen">
-                <p className="mb-3 text-[12px] text-[#667360]">
-                  Total data: {dosenRows.length}
-                </p>
-                <DataTable
-                  rows={dosenRows}
-                  columns={dosenCols}
-                  minWidth={720}
-                />
-              </PanelShell>
+              <FilteredShell
+                data={data}
+                dims={["jurusan", "prodi"]}
+                title="Data Kinerja Penelitian, Pengabdian, dan Publikasi Seluruh Dosen"
+              >
+                {({ filters }) => {
+                  const short = data.prodi.find((p) => p.name === filters.prodi)?.short;
+
+                  const dosenRows = data.dosen.filter(
+                    (d) =>
+                      (filters.jurusan === ALL.jurusan || d.jurusan === filters.jurusan) &&
+                      (filters.prodi === ALL.prodi || short === d.prodi)
+                  );
+
+                  return (
+                    <>
+                      <p className="mb-3 text-[12px] text-[#667360]">
+                        Total data: {dosenRows.length}
+                      </p>
+                      <DataTable rows={dosenRows} columns={dosenCols} minWidth={720} />
+                    </>
+                  );
+                }}
+              </FilteredShell>
             </Reveal>
           </div>
+          )}
         </div>
       </section>
 
@@ -2092,5 +2525,6 @@ export default function InfografisPage() {
         }
       `}</style>
     </main>
+    </UpdatedAtContext.Provider>
   );
 }

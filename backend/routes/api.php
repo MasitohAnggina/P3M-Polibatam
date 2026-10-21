@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\TimHkiController;
 use App\Http\Controllers\Api\HkiController;
 use App\Http\Controllers\Api\PengaturanController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\InfografisController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])
@@ -28,6 +29,7 @@ Route::get('/dokumen', [DokumenController::class, 'index']);
 Route::get('/tim-hki', [TimHkiController::class, 'index']);
 Route::get('/hki', [HkiController::class, 'index']);
 Route::get('/kontak', [PengaturanController::class, 'kontak']);
+Route::get('/infografis', [InfografisController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'me']);
