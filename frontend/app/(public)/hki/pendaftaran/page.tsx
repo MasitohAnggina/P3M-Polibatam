@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   CheckCircle2,
   ChevronRight,
@@ -161,18 +162,24 @@ const hkiTypes: HkiType[] = [
   },
 ];
 
-/* TODO: sesuaikan href dengan route halaman yang sebenarnya */
+/* Materi HKI (folder OneDrive P3M) dan tautan layanan Sentra HKI
+   (Linktree). Keduanya situs luar, dibuka di tab baru. */
+const MATERI_HKI_URL =
+  "https://polbat-my.sharepoint.com/personal/p3m_polibatam_ac_id/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fp3m%5Fpolibatam%5Fac%5Fid%2FDocuments%2FSentra%20HKI%2FMateri%2D%20Materi%20HKI&ga=1";
+
+const PENDAFTARAN_HKI_URL = "https://linktr.ee/IPLink_SentralAkses";
+
 const relatedInfo = [
   {
     title: "Materi terkait HKI",
     description: "Dokumen Materi HKI Polibatam.",
-    href: "/hki/materi",
+    href: MATERI_HKI_URL,
     icon: FileText,
   },
   {
     title: "Panduan Pendaftaran",
     description: "Panduan terkait proses pendaftaran HKI.",
-    href: "/hki/panduan",
+    href: PENDAFTARAN_HKI_URL,
     icon: BookOpen,
   },
 ];
@@ -680,8 +687,10 @@ export default function PendaftaranHKIPage() {
 
               return (
                 <Reveal key={item.title} delay={index * 110} className="flex">
-                  <Link
+                  <a
                     href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-2 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                   >
                     {/* sapuan warna saat hover */}
@@ -700,15 +709,16 @@ export default function PendaftaranHKIPage() {
                     </p>
 
                     <span className="mt-auto inline-flex items-center gap-0.5 pt-5 text-[13px] font-semibold text-[#31551F]">
-                      Selengkapnya
-                      <ChevronRight
+                      Buka Tautan
+                      <ArrowUpRight
                         size={15}
                         strokeWidth={2.2}
                         aria-hidden
-                        className="transition-transform duration-300 group-hover:translate-x-1"
+                        className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                       />
+                      <span className="sr-only"> (membuka tab baru)</span>
                     </span>
-                  </Link>
+                  </a>
                 </Reveal>
               );
             })}

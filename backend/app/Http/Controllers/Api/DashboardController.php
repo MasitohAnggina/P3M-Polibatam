@@ -53,7 +53,7 @@ class DashboardController extends Controller
             $kategori[] = ['name' => $nama, 'value' => $cfg['model']::count()];
         }
 
-        // tren penelitian, pengabdian, publikasi, HKI
+        // tren tiap kategori (grafik batang memakai empat yang pertama)
         $tren = [];
         for ($tahun = $dari; $tahun <= $tahunIni; $tahun++) {
             $tren[] = [
@@ -62,6 +62,7 @@ class DashboardController extends Controller
                 'pengabdian' => $perTahun['Pengabdian'][$tahun] ?? 0,
                 'publikasi'  => $perTahun['Publikasi'][$tahun] ?? 0,
                 'hki'        => $perTahun['HKI'][$tahun] ?? 0,
+                'informasi'  => $perTahun['Informasi'][$tahun] ?? 0,
             ];
         }
 

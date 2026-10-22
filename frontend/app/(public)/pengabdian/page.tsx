@@ -83,8 +83,10 @@ const SIMP3M_URL = "https://simp3m.polibatam.ac.id/";
 /* Panduan 2026: pengusul wajib mendaftarkan usulan di platform PBL. */
 const PBL_URL = "https://pbl.polibatam.ac.id/";
 
-/* TODO: ganti dengan tautan dokumen Rencana Induk Pengabdian. */
-const RIP_URL = "#";
+/* Rencana Induk Pengabdian kepada Masyarakat Politeknik Negeri Batam
+   (RIPPM Polibatam), dokumen di situs P2M. */
+const RIP_URL =
+  "https://p2m.polibatam.ac.id/wp-content/uploads/2021/08/RIP-Pengabdian-Masyarakat-2021-2025.pdf";
 
 const PANDUAN_URL =
   "https://polbat-my.sharepoint.com/:b:/g/personal/p3m_polibatam_ac_id/IQAI9PcvgLjgQriZuVKH8eW8AX72_cv1jt0xpUUQW5m2tKc?e=pSyo2v";

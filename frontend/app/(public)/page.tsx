@@ -124,13 +124,22 @@ const services: Service[] = [
   },
 ];
 
-/* TODO: ganti angka statistik ini dengan data asli P2M */
-const stats = [
-  { label: "Penelitian", value: 120, suffix: "+", icon: FlaskConical },
-  { label: "Pengabdian", value: 95, suffix: "+", icon: HandHeart },
-  { label: "Publikasi", value: 340, suffix: "+", icon: FileText },
-  { label: "HKI", value: 60, suffix: "+", icon: Award },
-  { label: "Dosen Aktif", value: 210, suffix: "+", icon: Users },
+/* Statistik diambil dari API (GET /api/statistik): jumlah data
+   Penelitian, Pengabdian, Publikasi, HKI, dan Profil Peneliti. */
+type StatsData = {
+  penelitian: number;
+  pengabdian: number;
+  publikasi: number;
+  hki: number;
+  dosen: number;
+};
+
+const statCards: { key: keyof StatsData; label: string; icon: LucideIcon }[] = [
+  { key: "penelitian", label: "Penelitian", icon: FlaskConical },
+  { key: "pengabdian", label: "Pengabdian", icon: HandHeart },
+  { key: "publikasi", label: "Publikasi", icon: FileText },
+  { key: "hki", label: "HKI", icon: Award },
+  { key: "dosen", label: "Dosen Aktif", icon: Users },
 ];
 
 /* Berita, Pengumuman, dan Agenda diambil dari API Informasi
@@ -276,14 +285,14 @@ const quickLinks = [
 
 const heroSlides = [
   {
-    image: "/img/Hero.jpg",
+    image: "/img/poltek.jpeg",
     eyebrow: "Politeknik Negeri Batam",
     title: "Mendorong Riset, Inovasi, dan Dampak Nyata.",
     description:
       "Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik Negeri Batam mendukung pengembangan penelitian, inovasi, dan pengabdian kepada masyarakat.",
   },
   {
-    image: "/img/Hero2.jpg",
+    image: "/img/poltek2.jpeg",
     eyebrow: "Penelitian & Inovasi",
     title: "Mengembangkan Riset untuk Masa Depan.",
     description:
@@ -636,6 +645,10 @@ export default function HomePage() {
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState("");
 
+  /* STATISTIK (dari API) */
+  const [statsData, setStatsData] = useState<StatsData | null>(null);
+  const [statsError, setStatsError] = useState(false);
+
   /* BERITA */
   const [newsTab, setNewsTab] = useState<NewsTab>("Semua");
   const [activeNews, setActiveNews] = useState(0);
@@ -702,6 +715,37 @@ export default function HomePage() {
         if (!cancelled) setNewsError("Berita gagal dimuat.");
       } finally {
         if (!cancelled) setNewsLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* AMBIL STATISTIK DARI API */
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_URL}/statistik`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+
+        if (!res.ok) throw new Error(`Kode ${res.status}`);
+
+        const json = await res.json();
+
+        if (!cancelled) {
+          setStatsData(json.data as StatsData);
+          setStatsError(false);
+        }
+      } catch {
+        if (!cancelled) setStatsError(true);
       }
     };
 
@@ -971,7 +1015,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto max-w-[1120px] px-5 md:px-7">
           <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
-            {stats.map((stat, index) => {
+            {statCards.map((stat, index) => {
               const Icon = stat.icon;
 
               return (
@@ -984,7 +1028,7 @@ export default function HomePage() {
                     <Icon size={22} strokeWidth={1.6} />
                   </span>
                   <p className="mt-4 text-[30px] font-bold leading-none tracking-[-0.02em] tabular-nums md:text-[36px]">
-                    <Counter to={stat.value} suffix={stat.suffix} />
+                    {statsError ? "-" : <Counter to={statsData?.[stat.key] ?? 0} />}
                   </p>
                   <p className="mt-2 text-[12.5px] font-medium text-white/75">
                     {stat.label}

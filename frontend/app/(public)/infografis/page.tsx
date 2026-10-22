@@ -16,6 +16,7 @@ import {
 } from "react";
 import {
   BarChart3,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -85,6 +86,31 @@ const PIE_COLORS = [
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 const UpdatedAtContext = createContext("");
+
+const MONTH_NAMES = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+/* "2026-10-14" -> "14 Oktober 2026".
+   Dibuat manual (tanpa Intl) supaya hasil di server dan di browser
+   selalu sama, tidak memicu hydration error. */
+function formatDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day || month < 1 || month > 12) return iso;
+
+  return `${String(day).padStart(2, "0")} ${MONTH_NAMES[month - 1]} ${year}`;
+}
 
 /* =========================================================
    BENTUK DATA DARI BACKEND
@@ -402,12 +428,14 @@ function SelectField({
   options,
   onChange,
   ariaLabel,
+  compact = false,
 }: {
   id?: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   ariaLabel?: string;
+  compact?: boolean;
 }) {
   return (
     <div className="relative">
@@ -416,7 +444,7 @@ function SelectField({
         aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full appearance-none rounded-xl border border-[#D9E2D3] bg-white px-4 pr-10 text-[13.5px] text-[#1F2A1A] outline-none transition-all duration-300 hover:border-[#8DC26F] focus:border-[#31551F] focus:ring-2 focus:ring-[#EEF4EA]"
+        className={`${compact ? "h-9 px-3 pr-8 text-[12.5px]" : "h-10 px-4 pr-10 text-[13.5px]"} w-full appearance-none rounded-xl border border-[#D9E2D3] bg-white text-[#1F2A1A] outline-none transition-all duration-300 hover:border-[#8DC26F] focus:border-[#31551F] focus:ring-2 focus:ring-[#EEF4EA]`}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -435,22 +463,54 @@ function SelectField({
   );
 }
 
+/* Tanggal pembaruan data: "Diperbarui: 14 Oktober 2026" */
+function UpdatedAt({
+  date,
+  className = "text-[12.5px]",
+}: {
+  date: string;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 font-medium text-[#667360] ${className}`}
+    >
+      <CalendarDays
+        size={13}
+        strokeWidth={1.8}
+        aria-hidden
+        className="shrink-0 text-[#3F6B28]"
+      />
+      Diperbarui:
+      <time dateTime={date} className="font-semibold text-[#31551F]">
+        {formatDate(date)}
+      </time>
+    </span>
+  );
+}
+
 /* Kartu dengan header hijau di tengah (mengikuti gaya kartu statistik PCR).
-   Bagian bawah kartu hanya tampil kalau ada catatan. */
+   Bagian bawah kartu berisi catatan (opsional) dan tanggal pembaruan data. */
 function PanelShell({
   title,
   children,
   note,
+  updatedAt: updatedAtProp,
   filters,
 }: {
   title: string;
   children: ReactNode;
   note?: string;
+  updatedAt?: string;
   /** filter milik panel ini (tampil di bawah judul) */
   filters?: ReactNode;
 }) {
+  const updatedFromContext = useContext(UpdatedAtContext);
+  const updatedAt = updatedAtProp ?? updatedFromContext;
+
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
+    <article
+      className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
       <h3 className="bg-[#31551F] px-5 py-3.5 text-center text-[13.5px] font-semibold leading-snug text-white sm:text-[14px]">
         {title}
       </h3>
@@ -460,11 +520,14 @@ function PanelShell({
 
         <div className="flex-1">{children}</div>
 
-        {note && (
-          <div className="mt-4 border-t border-[#E7EDE3] pt-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-[#E7EDE3] pt-3">
+          {note ? (
             <p className="text-[11px] leading-5 text-[#667360]">{note}</p>
-          </div>
-        )}
+          ) : (
+            <span />
+          )}
+          {updatedAt && <UpdatedAt date={updatedAt} className="text-[11px]" />}
+        </div>
       </div>
     </article>
   );
@@ -1298,6 +1361,7 @@ async function downloadChartPng({
   svg,
   legend = [],
   pieItems,
+  caption = "",
 }: {
   fileName: string;
   title: string;
@@ -1306,6 +1370,8 @@ async function downloadChartPng({
   legend?: LegendItem[];
   /** diisi untuk diagram lingkaran: daftar nilai di sisi kanan */
   pieItems?: { label: string; value: number }[];
+  /** keterangan filter yang aktif, tampil di bawah judul */
+  caption?: string;
 }) {
   const font = poppins.style.fontFamily;
 
@@ -1388,7 +1454,15 @@ async function downloadChartPng({
   const listH = pieItems ? pieItems.length * ROW_H : 0;
   const areaH = Math.max(svgH, listH);
 
-  const legendTop = titleH + PAD;
+  /* keterangan filter */
+  measure.font = `500 13px ${font}`;
+  const captionLines = caption
+    ? wrapCanvasText(measure, caption, width - PAD * 2)
+    : [];
+  const captionH = captionLines.length ? captionLines.length * 20 + 12 : 0;
+
+  const captionTop = titleH + 18;
+  const legendTop = titleH + PAD + captionH;
   const chartTop = legendTop + legendH;
   const height = chartTop + areaH + PAD;
 
@@ -1417,6 +1491,15 @@ async function downloadChartPng({
   ctx.textBaseline = "middle";
   titleLines.forEach((line, i) => {
     ctx.fillText(line, width / 2, 26 + i * 24);
+  });
+
+  /* keterangan filter */
+  ctx.font = `500 13px ${font}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#4A5646";
+  captionLines.forEach((line, i) => {
+    ctx.fillText(line, width / 2, captionTop + i * 20 + 10);
   });
 
   /* legenda */
@@ -1541,6 +1624,7 @@ function ChartPanel({
   fileTag = "",
   updatedAt: updatedAtProp,
   filters,
+  filterSummary = "",
 }: {
   title: string;
   labels: string[];
@@ -1561,6 +1645,8 @@ function ChartPanel({
   fileTag?: string;
   /** filter milik panel ini */
   filters?: ReactNode;
+  /** ringkasan filter aktif, ikut dicetak di gambar PNG */
+  filterSummary?: string;
   /** tanggal pembaruan data panel ini ("YYYY-MM-DD"); dipakai untuk nama file */
   updatedAt?: string;
 }) {
@@ -1597,7 +1683,9 @@ function ChartPanel({
   }));
   const showLegend = !(vary && series.length === 1 && !overlay);
 
-  const baseName = `${fileName}${fileTag}-${updatedAt}`;
+  const baseName = [`${fileName}${fileTag}`, updatedAt]
+    .filter(Boolean)
+    .join("-");
 
   const pieItems = labels.map((_, i) => ({
     label: names[i],
@@ -1617,6 +1705,7 @@ function ChartPanel({
         svg,
         legend: mode === "pie" || !showLegend ? [] : legendItems,
         pieItems: mode === "pie" ? pieItems : undefined,
+        caption: filterSummary,
       });
       setPngState("idle");
     } catch {
@@ -1626,7 +1715,12 @@ function ChartPanel({
   };
 
   return (
-    <PanelShell title={title} note={note} filters={filters}>
+    <PanelShell
+      title={title}
+      note={note}
+      updatedAt={updatedAt}
+      filters={filters}
+    >
       {/* TOOLBAR */}
       <div className="mb-3 flex items-center justify-end gap-1">
         {MODE_ORDER.filter((m) => modes.includes(m)).map((m) => {
@@ -1849,7 +1943,11 @@ const slug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-function usePanelFilters(data: InfografisData, dims: FilterDim[]) {
+function usePanelFilters(
+  data: InfografisData,
+  dims: FilterDim[],
+  wide = false
+) {
   const [filters, setFilters] = useState<PanelFilterState>({ ...PANEL_ALL });
 
   const setFilter = (key: FilterDim, value: string) =>
@@ -1899,6 +1997,7 @@ function usePanelFilters(data: InfografisData, dims: FilterDim[]) {
       onChange={setFilter}
       onReset={reset}
       active={active}
+      wide={wide}
     />
   );
 
@@ -1915,6 +2014,7 @@ function PanelFilterBar({
   onChange,
   onReset,
   active,
+  wide,
 }: {
   data: InfografisData;
   dims: FilterDim[];
@@ -1923,26 +2023,36 @@ function PanelFilterBar({
   onChange: (key: FilterDim, value: string) => void;
   onReset: () => void;
   active: boolean;
+  /** kartu selebar penuh: semua filter sebaris. Kartu setengah lebar:
+      dua filter pertama sebaris, filter ketiga di baris bawah. */
+  wide: boolean;
 }) {
   const uid = useId();
 
   if (dims.length === 0) return null;
 
-  const columns =
-    dims.length === 3
+  const columns = wide
+    ? dims.length === 3
       ? "sm:grid-cols-3"
       : dims.length === 2
         ? "sm:grid-cols-2"
-        : "sm:grid-cols-1";
+        : "sm:grid-cols-1"
+    : dims.length === 1
+      ? "grid-cols-1"
+      : "grid-cols-2";
+
+  /* kartu setengah lebar dengan 3 filter: yang ketiga memanjang penuh */
+  const spanLast = !wide && dims.length === 3 ? "col-span-2" : "";
 
   return (
     <div className="rounded-xl border border-[#E7EDE3] bg-[#F6F9F3] p-3">
-      <div className={`grid grid-cols-1 gap-3 ${columns}`}>
+      <div className={`grid gap-3 ${wide ? "grid-cols-1" : ""} ${columns}`}>
         {dims.includes("year") && (
           <div>
             <FieldLabel htmlFor={`${uid}-tahun`}>Tahun</FieldLabel>
             <SelectField
               id={`${uid}-tahun`}
+              compact
               value={filters.year}
               options={[
                 { value: ALL.year, label: ALL.year },
@@ -1958,6 +2068,7 @@ function PanelFilterBar({
             <FieldLabel htmlFor={`${uid}-jurusan`}>Jurusan</FieldLabel>
             <SelectField
               id={`${uid}-jurusan`}
+              compact
               value={filters.jurusan}
               options={[
                 { value: ALL.jurusan, label: ALL.jurusan },
@@ -1969,10 +2080,11 @@ function PanelFilterBar({
         )}
 
         {dims.includes("prodi") && (
-          <div>
+          <div className={spanLast}>
             <FieldLabel htmlFor={`${uid}-prodi`}>Program Studi</FieldLabel>
             <SelectField
               id={`${uid}-prodi`}
+              compact
               value={filters.prodi}
               options={[
                 { value: ALL.prodi, label: ALL.prodi },
@@ -2006,16 +2118,37 @@ function FilteredChart({
   data,
   dims,
   build,
+  wide = false,
 }: {
   data: InfografisData;
   dims: FilterDim[];
+  /** true untuk kartu selebar penuh */
+  wide?: boolean;
   build: (
     ctx: PanelContext
   ) => Omit<ComponentProps<typeof ChartPanel>, "filters" | "fileTag">;
 }) {
-  const { ctx, bar, fileTag } = usePanelFilters(data, dims);
+  const { ctx, bar, fileTag } = usePanelFilters(data, dims, wide);
 
-  return <ChartPanel {...build(ctx)} filters={bar} fileTag={fileTag} />;
+  const names: Record<FilterDim, string> = {
+    year: "Tahun",
+    jurusan: "Jurusan",
+    prodi: "Program Studi",
+  };
+
+  const summary = dims
+    .filter((dim) => ctx.filters[dim] !== PANEL_ALL[dim])
+    .map((dim) => `${names[dim]}: ${ctx.filters[dim]}`)
+    .join("  |  ");
+
+  return (
+    <ChartPanel
+      {...build(ctx)}
+      filters={bar}
+      fileTag={fileTag}
+      filterSummary={summary}
+    />
+  );
 }
 
 /* Kartu (tabel) dengan filter sendiri */
@@ -2025,14 +2158,17 @@ function FilteredShell({
   title,
   note,
   children,
+  wide = false,
 }: {
   data: InfografisData;
   dims: FilterDim[];
+  /** true untuk kartu selebar penuh */
+  wide?: boolean;
   title: string;
   note?: string;
   children: (ctx: PanelContext) => ReactNode;
 }) {
-  const { ctx, bar } = usePanelFilters(data, dims);
+  const { ctx, bar } = usePanelFilters(data, dims, wide);
 
   return (
     <PanelShell title={title} note={note} filters={bar}>
@@ -2259,6 +2395,7 @@ export default function InfografisPage() {
             <Reveal>
               <FilteredChart
                 data={data}
+                wide
                 dims={["jurusan", "prodi"]}
                 build={({ rows }) => {
                   const stats = perYear(rows, data.years);
@@ -2287,6 +2424,7 @@ export default function InfografisPage() {
             <Reveal>
               <FilteredChart
                 data={data}
+                wide
                 dims={["jurusan", "prodi"]}
                 build={({ rows }) => {
                   const stats = perYear(rows, data.years);
@@ -2463,6 +2601,7 @@ export default function InfografisPage() {
             <Reveal>
               <FilteredShell
                 data={data}
+                wide
                 dims={["jurusan", "prodi"]}
                 title="Data Statistik Keseluruhan Penelitian, Pengabdian, dan Publikasi Per Tahun"
               >
@@ -2481,6 +2620,7 @@ export default function InfografisPage() {
             <Reveal>
               <FilteredShell
                 data={data}
+                wide
                 dims={["jurusan", "prodi"]}
                 title="Data Kinerja Penelitian, Pengabdian, dan Publikasi Seluruh Dosen"
               >

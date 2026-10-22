@@ -6,13 +6,9 @@ import Link from "next/link";
 import { Poppins } from "next/font/google";
 
 import {
-  BarChart3,
-  BookOpen,
   CalendarDays,
   ChevronDown,
   Eye,
-  FlaskConical,
-  HandHeart,
   Info,
   LayoutDashboard,
   PieChart,
@@ -55,6 +51,7 @@ type TrendPoint = {
   pengabdian: number;
   publikasi: number;
   hki: number;
+  informasi?: number;
 };
 
 /* =========================================================
@@ -289,9 +286,11 @@ export default function DashboardPage() {
 
   const totalData = categories.reduce((sum, c) => sum + c.value, 0);
 
-  const growthOf = (key: "penelitian" | "pengabdian" | "publikasi") =>
+  const growthOf = (
+    key: "penelitian" | "pengabdian" | "publikasi" | "hki" | "informasi"
+  ) =>
     latestTrend && previousTrend
-      ? growth(latestTrend[key], previousTrend[key])
+      ? growth(latestTrend[key] ?? 0, previousTrend[key] ?? 0)
       : null;
 
   return (
@@ -347,41 +346,45 @@ export default function DashboardPage() {
             SUMMARY CARDS
         ===================================================== */}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            title="Penelitian"
-            value={countOf("Penelitian")}
-            growth={growthOf("penelitian")}
-            description="dibandingkan tahun sebelumnya"
-            icon={<FlaskConical size={18} strokeWidth={1.8} />}
-            tone="bg-[#2E7D32] text-white"
-          />
-
-          <SummaryCard
-            title="Pengabdian"
-            value={countOf("Pengabdian")}
-            growth={growthOf("pengabdian")}
-            description="dibandingkan tahun sebelumnya"
-            icon={<HandHeart size={18} strokeWidth={1.8} />}
-            tone="bg-[#A5D6A7] text-[#1B5E20]"
-          />
-
-          <SummaryCard
-            title="Publikasi"
-            value={countOf("Publikasi")}
-            growth={growthOf("publikasi")}
-            description="dibandingkan tahun sebelumnya"
-            icon={<BookOpen size={18} strokeWidth={1.8} />}
-            tone="bg-[#DDEBDD] text-[#1F5A23]"
-          />
-
-          <SummaryCard
-            title="Total Data"
+        {/* Total + lima kategori, gaya pill seperti ringkasan di halaman
+            Penelitian. Tiga per baris, jadi separuhnya turun ke baris bawah.
+            Total = jumlah kelima kategori. */}
+        <div className="grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-3">
+          <SummaryPill
+            label="Total Data"
             value={totalData}
             growth={data?.pertumbuhan_total ?? null}
-            description="seluruh data dalam sistem"
-            icon={<BarChart3 size={18} strokeWidth={1.8} />}
-            tone="bg-[#E9F3EA] text-[#2E5B32]"
+            className="bg-[#33423A] text-white"
+          />
+          <SummaryPill
+            label="Penelitian"
+            value={countOf("Penelitian")}
+            growth={growthOf("penelitian")}
+            className="bg-[#1B5E20] text-white"
+          />
+          <SummaryPill
+            label="Pengabdian"
+            value={countOf("Pengabdian")}
+            growth={growthOf("pengabdian")}
+            className="bg-[#388E3C] text-white"
+          />
+          <SummaryPill
+            label="Publikasi"
+            value={countOf("Publikasi")}
+            growth={growthOf("publikasi")}
+            className="bg-[#66BB6A] text-[#0F3D14]"
+          />
+          <SummaryPill
+            label="HKI"
+            value={countOf("HKI")}
+            growth={growthOf("hki")}
+            className="bg-[#A5D6A7] text-[#0F3D14]"
+          />
+          <SummaryPill
+            label="Informasi"
+            value={countOf("Informasi")}
+            growth={growthOf("informasi")}
+            className="bg-[#D3EBD5] text-[#0F3D14]"
           />
         </div>
 
@@ -570,59 +573,43 @@ function FilterSelect({
 }
 
 /* =========================================================
-   SUMMARY CARD
+   SUMMARY PILL
+   Label di atas, lalu pill berisi angka dan persentase naik/turun
+   dibanding tahun sebelumnya.
 ========================================================= */
 
-function SummaryCard({
-  title,
+function SummaryPill({
+  label,
   value,
   growth: growthLabel,
-  description,
-  icon,
-  tone,
+  className = "",
 }: {
-  title: string;
+  label: string;
   value: number;
   growth: string | null;
-  description: string;
-  icon: ReactNode;
-  tone: string;
+  className?: string;
 }) {
   const isNegative = growthLabel?.startsWith("-") ?? false;
   const TrendIcon = isNegative ? TrendingDown : TrendingUp;
 
   return (
-    <div className="flex h-full flex-col rounded-[24px] bg-white/70 p-4 shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] text-[#7A867F]">{title}</p>
+    <div className="min-w-0">
+      <p className="mb-1.5 pl-1 text-[12px] text-[#7A867F]">{label}</p>
 
-        <div
-          aria-hidden
-          className={`flex h-9 w-9 items-center justify-center rounded-full ${tone}`}
-        >
-          {icon}
-        </div>
-      </div>
+      <div
+        className={`flex h-11 items-center justify-between gap-3 rounded-full px-5 text-[14px] font-medium tabular-nums ${className}`}
+      >
+        <span>{value}</span>
 
-      <p className="mt-3 text-[30px] font-medium leading-none tracking-[-0.02em] tabular-nums text-[#26352D]">
-        {value}
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
         {growthLabel && (
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-              isNegative
-                ? "bg-[#FFF1F1] text-[#D34B4B]"
-                : "bg-[#E3F1E4] text-[#2E7D32]"
-            }`}
+            title="Dibandingkan tahun sebelumnya"
+            className="inline-flex items-center gap-1 rounded-full bg-white/30 px-2.5 py-1 text-[11px] font-medium leading-none"
           >
             <TrendIcon size={12} strokeWidth={2} aria-hidden />
             {growthLabel}
           </span>
         )}
-
-        <span className="text-[12px] text-[#8A948E]">{description}</span>
       </div>
     </div>
   );

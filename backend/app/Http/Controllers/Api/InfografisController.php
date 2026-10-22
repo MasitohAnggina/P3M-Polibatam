@@ -40,6 +40,21 @@ class InfografisController extends Controller
     private const KATEGORI_BUKU = 'E-Book';
     private const KATEGORI_PROSIDING = 'Prosiding';
 
+    /* GET /api/statistik (publik): angka ringkas untuk Beranda.
+       Jumlah seluruh data, tanpa pencocokan nama. */
+    public function ringkasan(): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'penelitian' => Penelitian::query()->count(),
+                'pengabdian' => Pengabdian::query()->count(),
+                'publikasi'  => Publikasi::query()->count(),
+                'hki'        => Hki::query()->count(),
+                'dosen'      => Peneliti::query()->count(),
+            ],
+        ]);
+    }
+
     public function index(): JsonResponse
     {
         $peneliti = $this->daftarPeneliti();
