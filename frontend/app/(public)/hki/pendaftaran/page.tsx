@@ -14,7 +14,6 @@ import {
   ExternalLink,
   FileText,
   Lightbulb,
-  Lock,
   PenTool,
   Tag,
   User,
@@ -151,12 +150,6 @@ const hkiTypes: HkiType[] = [
     description:
       "Rancangan peletakan tiga dimensi elemen sirkuit yang saling berkaitan dan dibentuk secara terpadu dalam bahan semikonduktor, sebagai persiapan pembuatan sirkuit terpadu.",
     icon: Cpu,
-  },
-  {
-    title: "Rahasia Dagang",
-    description:
-      "Informasi di bidang teknologi atau bisnis yang tidak diketahui umum, memiliki nilai ekonomi, dan dijaga kerahasiaannya oleh pemiliknya.",
-    icon: Lock,
   },
 ];
 

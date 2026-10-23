@@ -426,10 +426,9 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
     return () => cancelAnimationFrame(raf);
   }, [inView, to]);
 
-  return (
-    <span ref={ref}>
-      {value}
-      {suffix}
+    return (
+    <span ref={ref} translate="no" className="notranslate">
+      {`${value}${suffix}`}
     </span>
   );
 }
