@@ -740,11 +740,11 @@ export default function AdminPenelitianPage() {
                 <thead>
                   <tr>
                     <th className={`${thClass} py-4 pl-5 pr-3`}>Judul Penelitian</th>
-                    <th className={`${thClass} w-[190px]`}>Ketua Pengusul</th>
-                    <th className={`${thClass} w-[170px]`}>Bidang Fokus</th>
-                    <th className={`${thClass} w-[220px]`}>Program</th>
-                    <th className={`${thClass} w-[80px]`}>Tahun</th>
-                    <th className={`${thClass} w-[130px] pl-3 pr-5 text-right`}>Aksi</th>
+                    <th className={`${thClass} w-[190px] text-center`}>Ketua Pengusul</th>
+                    <th className={`${thClass} w-[170px] text-center`}>Bidang Fokus</th>
+                    <th className={`${thClass} w-[220px] text-center`}>Program</th>
+                    <th className={`${thClass} w-[80px] text-center`}>Tahun</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -764,32 +764,32 @@ export default function AdminPenelitianPage() {
                           </div>
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] text-[#34423A] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#34423A] transition-colors ${cell}`}>
                           {research.leader}
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}>
                           {research.field || <span className="text-[#A0AAA4]">—</span>}
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
                           <span className="inline-flex max-w-[200px] items-center gap-1.5 rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E7D32]" />
                             <span className="truncate">{research.program}</span>
                           </span>
                           {research.group && (
-                            <p className="mt-1 pl-1 text-[11px] text-[#8A948E]">
+                            <p className="mt-1 text-[11px] text-[#8A948E]">
                               {research.group}
                             </p>
                           )}
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}>
                           {research.year}
                         </td>
 
-                        <td className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}>
-                          <div className="flex items-center justify-end gap-1">
+                        <td className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}>
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton label="Lihat" onClick={() => openViewModal(research)}>
                               <Eye size={16} strokeWidth={1.8} />
                             </IconButton>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Poppins } from "next/font/google";
-import { Bell, UserCircle } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { useSidebar } from "@/components/admin/SidebarContext";
@@ -136,21 +136,6 @@ export default function AdminHeader() {
             RIGHT AREA
             ===================================================== */}
         <div className="flex shrink-0 items-center gap-[10px]">
-          {/* Notification */}
-          <button
-            type="button"
-            aria-label="Notifikasi"
-            className="relative flex h-[38px] w-[38px] items-center justify-center rounded-full border-0 bg-white/[0.08] text-white transition-colors hover:bg-white/[0.14]"
-          >
-            <Bell
-              size={17}
-              strokeWidth={2}
-            />
-
-            {/* Notification dot */}
-            <span className="absolute right-[8px] top-[7px] h-[5px] w-[5px] rounded-full bg-[#FF5252]" />
-          </button>
-
           {/* Admin */}
           <button
             type="button"

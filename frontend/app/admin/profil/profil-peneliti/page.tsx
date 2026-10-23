@@ -861,8 +861,8 @@ export default function ProfilPenelitiAdminPage() {
                   <tr>
                     <th className={`${thClass} min-w-[320px] pl-5`}>Peneliti</th>
                     <th className={`${thClass} min-w-[220px]`}>Prodi dan Jurusan</th>
-                    <th className={`${thClass} min-w-[220px]`}>Bidang Keahlian</th>
-                    <th className={`${thClass} w-[130px] pr-5 text-right`}>Aksi</th>
+                    <th className={`${thClass} min-w-[220px] text-center`}>Bidang Keahlian</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -906,8 +906,10 @@ export default function ProfilPenelitiAdminPage() {
 
                         {/* KEAHLIAN */}
 
-                        <td className={`px-3 py-3 align-middle transition-colors ${cell}`}>
-                          <div className="flex flex-wrap gap-1.5">
+                        <td
+                          className={`px-3 py-3 text-center align-middle transition-colors ${cell}`}
+                        >
+                          <div className="flex flex-wrap justify-center gap-1.5">
                             {shown.map((tag) => (
                               <Chip key={tag}>{tag}</Chip>
                             ))}
@@ -925,9 +927,9 @@ export default function ProfilPenelitiAdminPage() {
                         {/* AKSI */}
 
                         <td
-                          className={`rounded-r-2xl py-3 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton label="Detail" onClick={() => openDetailModal(member)}>
                               <Eye size={16} strokeWidth={1.8} />
                             </IconButton>

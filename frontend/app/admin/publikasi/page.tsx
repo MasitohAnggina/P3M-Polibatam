@@ -678,11 +678,11 @@ export default function PublikasiPage() {
                 <thead>
                   <tr>
                     <th className={`${thClass} min-w-[320px] pl-5`}>Judul Publikasi</th>
-                    <th className={`${thClass} w-[190px]`}>Penulis</th>
-                    <th className={`${thClass} w-[210px]`}>Jurnal / Prosiding</th>
-                    <th className={`${thClass} w-[210px]`}>Kategori</th>
-                    <th className={`${thClass} w-[80px]`}>Tahun</th>
-                    <th className={`${thClass} w-[130px] pr-5 text-right`}>Aksi</th>
+                    <th className={`${thClass} w-[190px] text-center`}>Penulis</th>
+                    <th className={`${thClass} w-[210px] text-center`}>Jurnal / Prosiding</th>
+                    <th className={`${thClass} w-[210px] text-center`}>Kategori</th>
+                    <th className={`${thClass} w-[80px] text-center`}>Tahun</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -706,16 +706,16 @@ export default function PublikasiPage() {
                           </div>
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] leading-[20px] text-[#34423A] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] leading-[20px] text-[#34423A] transition-colors ${cell}`}>
                           <span className="line-clamp-2">{item.authors}</span>
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] leading-[20px] text-[#5D6861] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] leading-[20px] text-[#5D6861] transition-colors ${cell}`}>
                           {item.source_name}
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle transition-colors ${cell}`}>
-                          <div className="flex flex-wrap items-center gap-1.5">
+                        <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
+                          <div className="flex flex-wrap items-center justify-center gap-1.5">
                             <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
                               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E7D32]" />
                               {item.category}
@@ -729,14 +729,14 @@ export default function PublikasiPage() {
                           </div>
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}>
                           {item.year}
                         </td>
 
                         <td
-                          className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton label="Lihat detail" onClick={() => openDetailModal(item)}>
                               <Eye size={16} strokeWidth={1.8} />
                             </IconButton>

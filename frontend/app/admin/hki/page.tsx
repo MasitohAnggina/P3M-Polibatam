@@ -540,19 +540,19 @@ export default function AdminHkiPage() {
                     <th className="border-b border-dashed border-[#DCE4DE] py-4 pl-5 pr-3 text-[12px] font-medium text-[#7A867F]">
                       Judul HKI
                     </th>
-                    <th className="w-[250px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-[12px] font-medium text-[#7A867F]">
+                    <th className="w-[250px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-center text-[12px] font-medium text-[#7A867F]">
                       Inventor / Pencipta
                     </th>
-                    <th className="w-[200px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-[12px] font-medium text-[#7A867F]">
+                    <th className="w-[200px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-center text-[12px] font-medium text-[#7A867F]">
                       Kategori
                     </th>
-                    <th className="w-[170px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-[12px] font-medium text-[#7A867F]">
+                    <th className="w-[170px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-center text-[12px] font-medium text-[#7A867F]">
                       Jenis HKI
                     </th>
-                    <th className="w-[80px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-[12px] font-medium text-[#7A867F]">
+                    <th className="w-[80px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-center text-[12px] font-medium text-[#7A867F]">
                       Tahun
                     </th>
-                    <th className="w-[130px] border-b border-dashed border-[#DCE4DE] py-4 pl-3 pr-5 text-right text-[12px] font-medium text-[#7A867F]">
+                    <th className="w-[130px] border-b border-dashed border-[#DCE4DE] px-3 py-4 text-center text-[12px] font-medium text-[#7A867F]">
                       Aksi
                     </th>
                   </tr>
@@ -593,20 +593,20 @@ export default function AdminHkiPage() {
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[13px] leading-5 text-[#34423A] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[13px] leading-5 text-[#34423A] transition-colors ${cell}`}
                         >
-                          <p className="line-clamp-2 max-w-[230px]">
+                          <p className="mx-auto line-clamp-2 max-w-[230px]">
                             {item.inventor.join(", ")}
                           </p>
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}
                         >
                           {item.kategori || <span className="text-[#A0AAA4]">—</span>}
                         </td>
 
-                        <td className={`px-3 py-3.5 align-middle transition-colors ${cell}`}>
+                        <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
                           <span className="inline-flex max-w-[170px] items-center gap-1.5 rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E7D32]" />
                             {item.jenis}
@@ -614,15 +614,15 @@ export default function AdminHkiPage() {
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}
                         >
                           {item.tahun}
                         </td>
 
                         <td
-                          className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton label="Lihat" onClick={() => openViewModal(item)}>
                               <Eye size={16} strokeWidth={1.8} />
                             </IconButton>

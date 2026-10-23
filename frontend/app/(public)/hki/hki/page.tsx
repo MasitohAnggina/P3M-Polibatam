@@ -54,7 +54,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 const simp3mLogin = "https://simp3m.polibatam.ac.id/index.php?page=login";
 
-const PER_PAGE = 5;
+const PER_PAGE = 10;
 
 /* jumlah nama inventor yang tampil sebelum tombol "+N lainnya" */
 const VISIBLE_INVENTORS = 3;
@@ -129,6 +129,22 @@ function jumpTo(target: HTMLElement | null) {
   if (target) target.scrollIntoView();
   else window.scrollTo(0, 0);
   root.style.scrollBehavior = previous;
+}
+
+/* Nomor halaman dengan titik-titik: 1 … 4 5 6 … 18 */
+function getPageList(total: number, current: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  if (start > 2) pages.push("…");
+  for (let n = start; n <= end; n++) pages.push(n);
+  if (end < total - 1) pages.push("…");
+
+  pages.push(total);
+  return pages;
 }
 
 const hkiTypes = [
@@ -318,108 +334,65 @@ function SelectField({
 }
 
 /* =========================================================
-   KARTU HKI
+   BARIS TABEL HKI
 ========================================================= */
 
-function HKICard({ item }: { item: HkiItem }) {
+function HKIRow({ item, number }: { item: HkiItem; number: number }) {
   const [expanded, setExpanded] = useState(false);
 
   const inventors = splitInventors(item.inventors);
-
   const hiddenCount = Math.max(0, inventors.length - VISIBLE_INVENTORS);
   const shownInventors = expanded
     ? inventors
     : inventors.slice(0, VISIBLE_INVENTORS);
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white transition-all duration-500 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.12)]">
-      {/* garis aksen di sisi kiri, muncul penuh saat hover */}
-      <span className="pointer-events-none absolute inset-y-0 left-0 w-1 origin-top scale-y-50 bg-gradient-to-b from-[#31551F] to-[#8DC26F] opacity-70 transition-all duration-500 group-hover:scale-y-100 group-hover:opacity-100" />
+    <tr className="border-t border-[#E7EDE3] align-top text-[13.5px] font-normal leading-[1.65] text-[#2F3B2A] transition-colors duration-300 hover:bg-[#F7FAF5]">
+      <td className="px-5 py-5">{number}</td>
 
-      <div className="p-5 pl-6 md:p-6 md:pl-7">
-        {/* BARIS ATAS: jenis + kategori, tahun */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            <span className="rounded-full bg-[#EEF4EA] px-3 py-1 text-[11px] font-semibold text-[#31551F]">
-              {item.type}
-            </span>
+      <td className="px-5 py-5">
+        <a
+          href={detailHref(item)}
+          className="text-[#2F3B2A] underline-offset-2 transition-colors duration-300 hover:text-[#31551F] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+        >
+          {item.title}
+        </a>
+      </td>
 
-            {item.category && (
-              <span className="text-[12px] text-[#667360]">{item.category}</span>
-            )}
-          </div>
-
-          <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-[#667360]">
-            <CalendarDays size={14} strokeWidth={1.8} aria-hidden />
-            {item.year}
+      <td className="px-5 py-5">
+        <span className="block">{item.type}</span>
+        {item.category && (
+          <span className="block text-[12.5px] text-[#667360]">
+            {item.category}
           </span>
-        </div>
+        )}
+      </td>
 
-        {/* JUDUL */}
-        <h3 className="mt-3.5 text-[15px] font-semibold leading-[1.5] tracking-[-0.005em] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[17px]">
-          {/* tautan "meregang": seluruh kartu bisa diklik menuju detail */}
-          <a
-            href={detailHref(item)}
-            className="rounded after:absolute after:inset-0 after:z-0 after:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-          >
-            {item.title}
-          </a>
-        </h3>
+      <td className="px-5 py-5 text-center">{item.year}</td>
 
-        {/* INVENTOR */}
-        <div className="mt-3 flex items-start gap-2.5">
-          <Users
-            size={15}
-            strokeWidth={1.8}
-            aria-hidden
-            className="mt-[3px] shrink-0 text-[#3F6B28]"
-          />
-
-          <p className="text-[13px] leading-[1.75] text-[#4A5646]">
-            {shownInventors.join(", ")}
-
-            {hiddenCount > 0 && (
-              <>
-                {" "}
-                <button
-                  type="button"
-                  onClick={() => setExpanded((prev) => !prev)}
-                  aria-expanded={expanded}
-                  className="relative z-10 rounded font-semibold text-[#31551F] underline-offset-2 transition-colors duration-300 hover:text-[#3F6B28] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-                >
-                  {expanded ? "Tampilkan lebih sedikit" : `+${hiddenCount} lainnya`}
-                </button>
-              </>
-            )}
-          </p>
-        </div>
-
-        {/* NOMOR PERMOHONAN */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#E7EDE3] pt-3.5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3F6B28]">
-              No. Permohonan
-            </span>
-
-            <span className="text-[13px] font-semibold tracking-[0.02em] text-[#1F2A1A]">
-              {item.applicationNumber}
-            </span>
-          </div>
-
-          <span
-            aria-hidden
-            className="inline-flex items-center gap-0.5 text-[12.5px] font-semibold text-[#31551F]"
-          >
-            Lihat Detail
-            <ChevronRight
-              size={15}
-              strokeWidth={2.2}
-              className="transition-transform duration-300 group-hover:translate-x-1"
-            />
+      <td className="px-5 py-5 text-center">
+        {shownInventors.map((name, i) => (
+          <span key={`${name}-${i}`} className="block">
+            {name}
           </span>
-        </div>
-      </div>
-    </article>
+        ))}
+
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+            className="mt-0.5 rounded text-[12.5px] font-medium text-[#31551F] underline-offset-2 transition-colors duration-300 hover:text-[#3F6B28] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+          >
+            {expanded ? "Tampilkan lebih sedikit" : `+${hiddenCount} lainnya`}
+          </button>
+        )}
+      </td>
+
+      <td className="break-all px-5 py-5 text-center">
+        {item.applicationNumber}
+      </td>
+    </tr>
   );
 }
 
@@ -776,12 +749,26 @@ export default function HKIPage() {
     });
   }, [hkiData, search, type, year]);
 
+  /* jumlah per jenis dari hasil filter, untuk ringkasan di atas tabel */
+  const typeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredHKI.forEach((item) =>
+      counts.set(item.type, (counts.get(item.type) ?? 0) + 1)
+    );
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [filteredHKI]);
+
   const totalPages = Math.max(1, Math.ceil(filteredHKI.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageItems = filteredHKI.slice(
     (safePage - 1) * PER_PAGE,
     safePage * PER_PAGE
   );
+
+  const changePage = (value: number) => {
+    setPage(value);
+    jumpTo(document.getElementById("data-hki"));
+  };
 
   const changeSearch = (value: string) => {
     setSearch(value);
@@ -827,23 +814,6 @@ export default function HKIPage() {
 
             <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
               <div className="mx-auto max-w-[720px]">
-                {/* jejak halaman */}
-                <nav
-                  aria-label="Jejak halaman"
-                  className="mb-6 flex items-center justify-center gap-2 text-[12.5px] text-white/70"
-                >
-                  <Link
-                    href="/"
-                    className="transition-colors duration-300 hover:text-white"
-                  >
-                    Beranda
-                  </Link>
-                  <ChevronRight size={13} strokeWidth={2} aria-hidden />
-                  <span aria-current="page" className="font-semibold text-white">
-                    HKI
-                  </span>
-                </nav>
-
                 <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
                   HKI
                 </h1>
@@ -852,23 +822,6 @@ export default function HKIPage() {
                   Informasi dan data Hak Kekayaan Intelektual yang dikelola oleh
                   P2M Politeknik Negeri Batam.
                 </p>
-
-                {/* pintasan */}
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-                  <a
-                    href="#data-hki"
-                    className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[12.5px] font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  >
-                    Data HKI
-                  </a>
-
-                  <Link
-                    href="/hki/pendaftaran"
-                    className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[12.5px] font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  >
-                    Info Pendaftaran
-                  </Link>
-                </div>
               </div>
             </div>
 
@@ -946,16 +899,68 @@ export default function HKIPage() {
                     </span>{" "}
                     data HKI
                   </p>
+
+                  {typeCounts.length > 0 && (
+                    <p className="hidden text-right text-[12.5px] text-[#667360] md:block">
+                      {typeCounts
+                        .map(([name, count]) => `${count} ${name}`)
+                        .join(" · ")}
+                    </p>
+                  )}
                 </div>
               </Reveal>
 
-              {/* ---------- DAFTAR KARTU ---------- */}
+              {/* ---------- TABEL ---------- */}
               <div className="grid gap-4">
-                {pageItems.map((item, index) => (
-                  <Reveal key={item.applicationNumber} delay={index * 80}>
-                    <HKICard item={item} />
+                {pageItems.length > 0 && (
+                  <Reveal>
+                    <div className="overflow-x-auto rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
+                      <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
+                        <colgroup>
+                          <col className="w-[6%]" />
+                          <col className="w-[31%]" />
+                          <col className="w-[15%]" />
+                          <col className="w-[8%]" />
+                          <col className="w-[20%]" />
+                          <col className="w-[20%]" />
+                        </colgroup>
+
+                        <thead>
+                          <tr className="bg-[#EEF4EA] text-[13px] font-semibold text-[#31551F]">
+                            <th scope="col" className="px-5 py-4">
+                              No
+                            </th>
+                            <th scope="col" className="px-5 py-4">
+                              Judul
+                            </th>
+                            <th scope="col" className="px-5 py-4">
+                              Jenis HKI
+                            </th>
+                            <th scope="col" className="px-5 py-4 text-center">
+                              Tahun
+                            </th>
+                            <th scope="col" className="px-5 py-4 text-center">
+                              Inventor / Pencipta
+                            </th>
+                            <th scope="col" className="px-5 py-4 text-center">
+                              No. Permohonan
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {pageItems.map((item, index) => (
+                            <HKIRow
+                              key={item.applicationNumber}
+                              item={item}
+                              number={(safePage - 1) * PER_PAGE + index + 1}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </Reveal>
-                ))}
+                )}
 
                 {/* MEMUAT */}
                 {loading && (
@@ -1003,7 +1008,7 @@ export default function HKIPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => setPage(Math.max(1, safePage - 1))}
+                    onClick={() => changePage(Math.max(1, safePage - 1))}
                     disabled={safePage === 1}
                     aria-label="Halaman sebelumnya"
                     className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D9E2D3] bg-white text-[#31551F] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
@@ -1011,32 +1016,42 @@ export default function HKIPage() {
                     <ChevronLeft size={16} strokeWidth={2} />
                   </button>
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (number) => {
-                      const isActive = number === safePage;
-
+                  {getPageList(totalPages, safePage).map((number, i) => {
+                    if (number === "…") {
                       return (
-                        <button
-                          key={number}
-                          type="button"
-                          onClick={() => setPage(number)}
-                          aria-label={`Halaman ${number}`}
-                          aria-current={isActive ? "page" : undefined}
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[12.5px] font-semibold transition-all duration-300 ${
-                            isActive
-                              ? "border-[#31551F] bg-[#31551F] text-white"
-                              : "border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
-                          }`}
+                        <span
+                          key={`gap-${i}`}
+                          aria-hidden
+                          className="flex h-10 w-6 items-center justify-center text-[#667360]"
                         >
-                          {number}
-                        </button>
+                          …
+                        </span>
                       );
                     }
-                  )}
+
+                    const isActive = number === safePage;
+
+                    return (
+                      <button
+                        key={number}
+                        type="button"
+                        onClick={() => changePage(number)}
+                        aria-label={`Halaman ${number}`}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`flex h-10 w-10 items-center justify-center rounded-xl border text-[12.5px] font-semibold transition-all duration-300 ${
+                          isActive
+                            ? "border-[#31551F] bg-[#31551F] text-white"
+                            : "border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
+                        }`}
+                      >
+                        {number}
+                      </button>
+                    );
+                  })}
 
                   <button
                     type="button"
-                    onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+                    onClick={() => changePage(Math.min(totalPages, safePage + 1))}
                     disabled={safePage === totalPages}
                     aria-label="Halaman berikutnya"
                     className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D9E2D3] bg-white text-[#31551F] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"

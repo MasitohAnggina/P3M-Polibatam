@@ -786,12 +786,12 @@ export default function AdminDokumenPanduanPage() {
                     <th className={`${thClass} min-w-[340px] pl-5`}>
                       Judul Dokumen
                     </th>
-                    <th className={`${thClass} w-[170px]`}>Jenis</th>
-                    <th className={`${thClass} w-[160px]`}>Tahun / Tanggal</th>
-                    <th className={`${thClass} w-[140px]`}>File</th>
-                    <th className={`${thClass} w-[130px] pr-5 text-right`}>
-                      Aksi
+                    <th className={`${thClass} w-[170px] text-center`}>Jenis</th>
+                    <th className={`${thClass} w-[160px] text-center`}>
+                      Tahun / Tanggal
                     </th>
+                    <th className={`${thClass} w-[140px] text-center`}>File</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -827,7 +827,7 @@ export default function AdminDokumenPanduanPage() {
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}
                         >
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E7D32]" />
@@ -836,13 +836,13 @@ export default function AdminDokumenPanduanPage() {
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#46544B] transition-colors ${cell}`}
                         >
                           {item.date ? formatDate(item.date) : item.year}
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[12px] text-[#6E7A73] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[12px] text-[#6E7A73] transition-colors ${cell}`}
                         >
                           {info ? (
                             <span className="whitespace-nowrap">{info}</span>
@@ -852,9 +852,9 @@ export default function AdminDokumenPanduanPage() {
                         </td>
 
                         <td
-                          className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton
                               label="Lihat detail"
                               onClick={() => openDetailModal(item)}

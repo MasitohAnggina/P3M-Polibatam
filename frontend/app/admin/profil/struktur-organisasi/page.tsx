@@ -482,8 +482,8 @@ export default function StrukturOrganisasiPage() {
                   <tr>
                     <th className={`${thClass} w-[100px] pl-5`}>Urutan</th>
                     <th className={`${thClass} min-w-[300px]`}>Foto dan Nama</th>
-                    <th className={`${thClass} min-w-[200px]`}>Jabatan</th>
-                    <th className={`${thClass} w-[130px] pr-5 text-right`}>Aksi</th>
+                    <th className={`${thClass} min-w-[200px] text-center`}>Jabatan</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -517,7 +517,9 @@ export default function StrukturOrganisasiPage() {
 
                         {/* JABATAN */}
 
-                        <td className={`px-3 py-3.5 align-middle transition-colors ${cell}`}>
+                        <td
+                          className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}
+                        >
                           <span className="inline-flex items-center gap-1.5 rounded-2xl bg-[#EEF4EA] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#31551F]">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#31551F]" />
                             {member.position}
@@ -527,9 +529,9 @@ export default function StrukturOrganisasiPage() {
                         {/* AKSI */}
 
                         <td
-                          className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton label="Detail" onClick={() => openDetailModal(member)}>
                               <Eye size={16} strokeWidth={1.8} />
                             </IconButton>

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Poppins } from "next/font/google";
 import {
   useEffect,
@@ -440,9 +439,6 @@ function SectionTitle({
   );
 }
 
-const shortcutClass =
-  "rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[12.5px] font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-
 /* =========================================================
    HALAMAN PENGABDIAN
    - tampilan daftar  : /pengabdian
@@ -647,23 +643,6 @@ export default function PengabdianPage() {
 
             <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
               <div className="mx-auto max-w-[720px]">
-                {/* jejak halaman */}
-                <nav
-                  aria-label="Jejak halaman"
-                  className="mb-6 flex items-center justify-center gap-2 text-[12.5px] text-white/70"
-                >
-                  <Link
-                    href="/"
-                    className="transition-colors duration-300 hover:text-white"
-                  >
-                    Beranda
-                  </Link>
-                  <ChevronRight size={13} strokeWidth={2} aria-hidden />
-                  <span aria-current="page" className="font-semibold text-white">
-                    Pengabdian
-                  </span>
-                </nav>
-
                 <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
                   Pengabdian
                 </h1>
@@ -672,24 +651,6 @@ export default function PengabdianPage() {
                   Informasi program, pendanaan, tahapan, dan kegiatan
                   pengabdian kepada masyarakat Politeknik Negeri Batam.
                 </p>
-
-                {/* pintasan ke bagian halaman */}
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-                  {[
-                    { label: "Arah Pengabdian", href: "#rip-pengabdian" },
-                    { label: "Program", href: "#program" },
-                    { label: "Tahapan", href: "#tahapan" },
-                    { label: "Data Pengabdian", href: "#daftar-pengabdian" },
-                  ].map((item) => (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className={shortcutClass}
-                    >
-                      {item.label}
-                    </a>
-                  ))}
-                </div>
               </div>
             </div>
 

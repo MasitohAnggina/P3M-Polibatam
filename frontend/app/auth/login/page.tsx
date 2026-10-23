@@ -241,7 +241,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   required
                   aria-invalid={!!fieldErrors.password}
-                  className={`${inputClass(fieldErrors.password)} pr-[118px]`}
+                  className={`${inputClass(fieldErrors.password)} pr-8`}
                 />
                 <span className="p3m-underline" />
 
@@ -257,18 +257,6 @@ export default function LoginPage() {
                     ) : (
                       <Eye size={16} strokeWidth={1.7} />
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setToast({
-                        type: "info",
-                        message: "Fitur lupa password belum tersedia.",
-                      })
-                    }
-                    className="text-[10px] font-medium uppercase tracking-wide text-[#2e9e4f] transition-colors hover:text-[#237a3c]"
-                  >
-                    Lupa password?
                   </button>
                 </div>
               </div>

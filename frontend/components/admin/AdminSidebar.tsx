@@ -126,6 +126,28 @@ function getActiveParent(pathname: string) {
   );
 }
 
+/* nama admin dari data login ("p3m_user" disimpan oleh halaman login).
+   Dicoba beberapa nama field, terakhir email. Kosong kalau tidak ada. */
+function getAdminName(): string {
+  try {
+    const raw =
+      localStorage.getItem("p3m_user") ?? sessionStorage.getItem("p3m_user");
+
+    if (!raw) return "";
+
+    const user = JSON.parse(raw) as Record<string, unknown>;
+
+    for (const key of ["name", "nama", "username", "email"]) {
+      const value = user?.[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+  } catch {
+    /* data rusak atau storage tidak tersedia */
+  }
+
+  return "";
+}
+
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -140,6 +162,14 @@ export default function AdminSidebar() {
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  /* nama admin dibaca setelah halaman tampil di browser
+     (storage tidak ada di server) */
+  const [adminName, setAdminName] = useState("");
+
+  useEffect(() => {
+    setAdminName(getAdminName());
+  }, []);
 
   /* popup konfirmasi: Escape menutup (kecuali saat proses keluar berjalan) */
   useEffect(() => {
@@ -225,9 +255,12 @@ export default function AdminSidebar() {
             <UserCircle size={27} strokeWidth={1.7} />
           </div>
 
-          <div>
-            <p className="text-[13px] font-semibold leading-4 text-[#34423A]">
-              Profile
+          <div className="min-w-0">
+            <p
+              title={adminName || "Admin"}
+              className="truncate text-[13px] font-semibold leading-4 text-[#34423A]"
+            >
+              {adminName || "Admin"}
             </p>
           </div>
         </div>

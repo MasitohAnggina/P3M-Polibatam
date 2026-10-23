@@ -617,17 +617,16 @@ export default function AdminTimHkiPage() {
 
           <div className="w-full overflow-hidden rounded-[22px] bg-white">
             <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[720px] border-separate border-spacing-y-1 px-2 text-left">
+              <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-y-1 px-2 text-left">
                 <thead>
                   <tr>
-                    <th className={`${thClass} w-[90px] pl-5`}>Urutan</th>
-                    <th className={`${thClass} min-w-[260px]`}>Nama</th>
-                    <th className={`${thClass} min-w-[280px]`}>
+                    {/* LEBAR KOLOM DIATUR DI SINI (total harus 100%) */}
+                    <th className={`${thClass} w-[9%] pl-5`}>Urutan</th>
+                    <th className={`${thClass} w-[32.5%]`}>Nama</th>
+                    <th className={`${thClass} w-[40%] text-center`}>
                       Jabatan / Tugas
                     </th>
-                    <th className={`${thClass} w-[130px] pr-5 text-right`}>
-                      Aksi
-                    </th>
+                    <th className={`${thClass} w-[11.5%] text-center`}>Aksi</th>
                   </tr>
                 </thead>
 
@@ -662,17 +661,17 @@ export default function AdminTimHkiPage() {
                         </td>
 
                         <td
-                          className={`px-3 py-3.5 align-middle text-[13px] leading-[20px] text-[#46544B] transition-colors ${cell}`}
+                          className={`px-3 py-3.5 text-center align-middle text-[13px] leading-[20px] text-[#46544B] transition-colors ${cell}`}
                         >
-                          <span className="line-clamp-2 max-w-[360px]">
+                          <span className="mx-auto line-clamp-2 max-w-[360px]">
                             {item.role}
                           </span>
                         </td>
 
                         <td
-                          className={`rounded-r-2xl py-3.5 pl-3 pr-5 align-middle transition-colors ${cell}`}
+                          className={`rounded-r-2xl px-3 py-3.5 align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-center gap-1">
                             <IconButton
                               label="Lihat detail"
                               onClick={() => openDetailModal(item)}

@@ -222,19 +222,6 @@ function SearchContent() {
         <div className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl" />
 
         <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-12 pt-12 text-center md:px-7 md:pb-16 md:pt-16">
-          <nav
-            aria-label="Jejak halaman"
-            className="mb-5 flex items-center justify-center gap-2 text-[12.5px] text-white/70"
-          >
-            <Link href="/" className="transition-colors duration-300 hover:text-white">
-              Beranda
-            </Link>
-            <ChevronRight size={13} strokeWidth={2} aria-hidden />
-            <span aria-current="page" className="font-semibold text-white">
-              Pencarian
-            </span>
-          </nav>
-
           <h1 className="text-[32px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[40px]">
             Hasil Pencarian
           </h1>
