@@ -86,6 +86,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 const UpdatedAtContext = createContext("");
 
+/* nama Indonesia -> nama Inggris, dikirim backend dari tabel terjemahan */
+const TranslationsContext = createContext<Record<string, string>>({});
+
 const MONTH_NAMES = [
   "Januari",
   "Februari",
@@ -110,6 +113,111 @@ function formatDate(iso: string) {
 
   return `${String(day).padStart(2, "0")} ${MONTH_NAMES[month - 1]} ${year}`;
 }
+
+/* =========================================================
+   BAHASA UNTUK UNDUHAN (PNG, CSV, nama file)
+   Google Translate hanya mengubah teks di layar. PNG dan CSV dibuat
+   dari data di kode, jadi diterjemahkan lewat dua sumber. Kalau
+   bahasa Inggris dipakai (cookie googtrans = /id/en), urutannya:
+   1) terjemahan dari database (nama prodi, jurusan, jenis program),
+   2) kamus label tetap di bawah ini,
+   3) teks asli kalau tidak ada di keduanya.
+========================================================= */
+
+function isEnglish() {
+  if (typeof document === "undefined") return false;
+
+  const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+
+  return !!match && decodeURIComponent(match[1]) === "/id/en";
+}
+
+const EN: Record<string, string> = {
+  /* judul grafik */
+  "Total Penelitian, Pengabdian, Publikasi dan HKI":
+    "Total Research, Community Service, Publications and IPR",
+  "Penelitian, Pengabdian, Publikasi dan HKI Jurusan":
+    "Research, Community Service, Publications and IPR by Department",
+  "Grafik Persentase Partisipasi Dosen":
+    "Lecturer Participation Percentage Chart",
+  "Total Penelitian, Pengabdian, Publikasi Per Tahun":
+    "Total Research, Community Service, Publications Per Year",
+  "Perbandingan Penelitian Per Tahun": "Research Comparison Per Year",
+  "Perbandingan Publikasi Ilmiah Per Tahun":
+    "Scientific Publication Comparison Per Year",
+  "Perbandingan Penelitian Per Prodi":
+    "Research Comparison Per Study Program",
+  "Perbandingan Publikasi Ilmiah Per Prodi":
+    "Scientific Publication Comparison Per Study Program",
+  "Perbandingan Pengabdian Per Jenis":
+    "Community Service Comparison Per Type",
+
+  /* nama seri, label, dan judul kolom */
+  Penelitian: "Research",
+  Pengabdian: "Community Service",
+  Publikasi: "Publications",
+  HKI: "IPR",
+  Total: "Total",
+  Kegiatan: "Activity",
+  Tahun: "Year",
+  Jurusan: "Department",
+  "Program Studi": "Study Program",
+  Jenis: "Type",
+  Kategori: "Category",
+  "Persen (%)": "Percent (%)",
+  "Total Data": "Total Data",
+  Lainnya: "Others",
+
+  /* catatan di kartu */
+  "Dihitung dari dosen yang terdaftar di Profil Peneliti.":
+    "Calculated from lecturers registered in the Researcher Profile.",
+
+  /* nama file unduhan */
+  "total-p2m": "total-p2m",
+  "p2m-per-jurusan": "p2m-per-department",
+  "partisipasi-dosen": "lecturer-participation",
+  "total-per-tahun": "total-per-year",
+  "penelitian-per-tahun": "research-per-year",
+  "publikasi-per-tahun": "publications-per-year",
+  "penelitian-per-prodi": "research-per-study-program",
+  "publikasi-per-prodi": "publications-per-study-program",
+  "pengabdian-per-jenis": "community-service-per-type",
+};
+
+/* terjemahkan kalau bahasa Inggris dipakai.
+   Urutan: nama dari database, lalu kamus label tetap, lalu teks asli. */
+function tr(text: string, dict: Record<string, string> = {}) {
+  if (!isEnglish()) return text;
+
+  return dict[text] ?? EN[text] ?? text;
+}
+
+/* terjemahkan semua teks pada data satu grafik */
+function translateChartProps<
+  T extends Omit<ComponentProps<typeof ChartPanel>, "filters" | "fileTag">
+>(props: T, dict: Record<string, string>): T {
+  if (!isEnglish()) return props;
+
+  /* pakai fungsi panah, bukan .map(t): map mengirim indeks sebagai
+     argumen kedua dan itu akan terbaca sebagai kamus */
+  const t = (text: string) => tr(text, dict);
+
+  return {
+    ...props,
+    title: t(props.title),
+    labels: props.labels.map((label) => t(label)),
+    fullLabels: props.fullLabels?.map((label) => t(label)),
+    labelHeader: props.labelHeader ? t(props.labelHeader) : props.labelHeader,
+    fileName: t(props.fileName),
+    note: props.note ? t(props.note) : props.note,
+    yTitle: props.yTitle ? t(props.yTitle) : props.yTitle,
+    series: props.series.map((s) => ({ ...s, name: t(s.name) })),
+    overlay: props.overlay
+      ? { ...props.overlay, name: t(props.overlay.name) }
+      : props.overlay,
+  };
+}
+
 
 /* =========================================================
    BENTUK DATA DARI BACKEND
@@ -165,6 +273,8 @@ type InfografisData = {
   prodi: ProdiInfo[];
   rows: Row[];
   dosen: DosenItem[];
+  /** nama Indonesia -> nama Inggris, dari database */
+  translations: Record<string, string>;
 };
 
 const EMPTY_DATA: InfografisData = {
@@ -174,6 +284,7 @@ const EMPTY_DATA: InfografisData = {
   prodi: [],
   rows: [],
   dosen: [],
+  translations: {},
 };
 
 /* Jumlahkan peta {label: jumlah} dari banyak baris, urut terbanyak */
@@ -1946,6 +2057,7 @@ function usePanelFilters(
   wide = false
 ) {
   const [filters, setFilters] = useState<PanelFilterState>({ ...PANEL_ALL });
+  const dict = useContext(TranslationsContext);
 
   const setFilter = (key: FilterDim, value: string) =>
     setFilters((current) => ({
@@ -1979,10 +2091,11 @@ function usePanelFilters(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.rows, filters]);
 
-  /* untuk nama file unduhan, hanya filter yang sedang dipakai */
+  /* untuk nama file unduhan, hanya filter yang sedang dipakai.
+     Nilai filter ikut diterjemahkan supaya nama file sesuai bahasa. */
   const fileTag = dims
     .filter((dim) => filters[dim] !== PANEL_ALL[dim])
-    .map((dim) => `-${slug(filters[dim])}`)
+    .map((dim) => `-${slug(tr(filters[dim], dict))}`)
     .join("");
 
   const bar = (
@@ -2126,21 +2239,22 @@ function FilteredChart({
   ) => Omit<ComponentProps<typeof ChartPanel>, "filters" | "fileTag">;
 }) {
   const { ctx, bar, fileTag } = usePanelFilters(data, dims, wide);
+  const dict = useContext(TranslationsContext);
 
   const names: Record<FilterDim, string> = {
-    year: "Tahun",
-    jurusan: "Jurusan",
-    prodi: "Program Studi",
+    year: tr("Tahun", dict),
+    jurusan: tr("Jurusan", dict),
+    prodi: tr("Program Studi", dict),
   };
 
   const summary = dims
     .filter((dim) => ctx.filters[dim] !== PANEL_ALL[dim])
-    .map((dim) => `${names[dim]}: ${ctx.filters[dim]}`)
+    .map((dim) => `${names[dim]}: ${tr(ctx.filters[dim], dict)}`)
     .join("  |  ");
 
   return (
     <ChartPanel
-      {...build(ctx)}
+      {...translateChartProps(build(ctx), dict)}
       filters={bar}
       fileTag={fileTag}
       filterSummary={summary}
@@ -2235,244 +2349,206 @@ export default function InfografisPage() {
 
   return (
     <UpdatedAtContext.Provider value={data.updated_at}>
-      <main
-        className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
-      >
-        <ScrollProgress />
+      <TranslationsContext.Provider value={data.translations}>
+        <main
+          className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+        >
+          <ScrollProgress />
 
-        {/* =====================================================
-            HERO (sama dengan hero halaman HKI dan Publikasi)
-        ===================================================== */}
+          {/* =====================================================
+              HERO (sama dengan hero halaman HKI dan Publikasi)
+          ===================================================== */}
 
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white">
-          {/* cahaya hijau lembut */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#8DC26F]/20 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl"
-          />
-
-          <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
-            <div className="mx-auto max-w-[720px]">
-              <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
-                Infografis
-              </h1>
-
-              <p className="mx-auto mt-5 max-w-[580px] text-[14px] font-normal leading-[1.8] text-white/85 sm:text-[15px]">
-                Informasi visual mengenai perkembangan penelitian, pengabdian,
-                publikasi, HKI, dan bidang fokus penelitian Politeknik Negeri
-                Batam.
-              </p>
-            </div>
-          </div>
-
-          <div
-            aria-hidden
-            className="absolute bottom-0 left-0 h-[3px] w-full bg-gradient-to-r from-[#31551F] via-[#8DC26F] to-[#31551F]"
-          />
-        </section>
-
-        {/* =====================================================
-            STATISTIK
-        ===================================================== */}
-
-        <section id="statistik" className="scroll-mt-20 bg-white py-16 md:py-20">
-          <div className="mx-auto max-w-[1120px] px-5 md:px-7">
-            <SectionTitle
-              eyebrow="Statistik P2M"
-              title="Statistik Keseluruhan P2M Polibatam"
-              description="Total penelitian, pengabdian, publikasi, dan HKI. Setiap grafik punya filter sendiri, bisa diganti tampilannya (garis, batang, atau data), dan diunduh sebagai gambar (PNG) atau data (CSV) sesuai filternya."
+          <section className="relative overflow-hidden bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white">
+            {/* cahaya hijau lembut */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#8DC26F]/20 blur-3xl"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl"
             />
 
-            {error && (
-              <p
-                role="alert"
-                className="mt-5 rounded-xl bg-[#FFF1F1] px-4 py-3 text-[13px] text-[#B91C1C]"
-              >
-                {error}
-              </p>
-            )}
+            <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+              <div className="mx-auto max-w-[720px]">
+                <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
+                  Infografis
+                </h1>
 
-            {loading ? (
-              <p className="mt-10 text-center text-[13px] text-[#667360]">
-                Memuat data infografis...
-              </p>
-            ) : (
-              <div className="mt-6 space-y-5">
-                {/* ---------- TOTAL + JURUSAN ---------- */}
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <Reveal className="h-full">
-                    <FilteredChart
-                      data={data}
-                      dims={["year", "jurusan", "prodi"]}
-                      build={({ rows }) => {
-                        const t = aggregate(rows);
+                <p className="mx-auto mt-5 max-w-[580px] text-[14px] font-normal leading-[1.8] text-white/85 sm:text-[15px]">
+                  Informasi visual mengenai perkembangan penelitian, pengabdian,
+                  publikasi, HKI, dan bidang fokus penelitian Politeknik Negeri
+                  Batam.
+                </p>
+              </div>
+            </div>
 
-                        return {
-                          title:
-                            "Total Penelitian, Pengabdian, Publikasi dan HKI",
-                          fileName: "total-p2m",
-                          labelHeader: "Kegiatan",
-                          labels: [
-                            "Penelitian",
-                            "Pengabdian",
-                            "Publikasi",
-                            "HKI",
-                          ],
-                          series: [
-                            mk("Total", SERIES[0], [
-                              t.penelitian,
-                              t.pengabdian,
-                              t.publikasi,
-                              t.hki,
-                            ]),
-                          ],
-                          vary: true,
-                          modes: ["bar", "line", "pie", "table"],
-                          defaultMode: "bar",
-                        };
-                      }}
-                    />
-                  </Reveal>
+            <div
+              aria-hidden
+              className="absolute bottom-0 left-0 h-[3px] w-full bg-gradient-to-r from-[#31551F] via-[#8DC26F] to-[#31551F]"
+            />
+          </section>
 
-                  <Reveal delay={110} className="h-full">
-                    <FilteredChart
-                      data={data}
-                      dims={["year"]}
-                      build={({ rows }) => {
-                        const stats = data.jurusan.map((name) => ({
-                          name,
-                          ...aggregate(rows.filter((r) => r.jurusan === name)),
-                        }));
+          {/* =====================================================
+              STATISTIK
+          ===================================================== */}
 
-                        return {
-                          title:
-                            "Penelitian, Pengabdian, Publikasi dan HKI Jurusan",
-                          fileName: "p2m-per-jurusan",
-                          labelHeader: "Jurusan",
-                          labels: stats.map((j) => j.name),
-                          series: [
-                            mk(
+          <section id="statistik" className="scroll-mt-20 bg-white py-16 md:py-20">
+            <div className="mx-auto max-w-[1120px] px-5 md:px-7">
+              <SectionTitle
+                eyebrow="Statistik P2M"
+                title="Statistik Keseluruhan P2M Polibatam"
+                description="Total penelitian, pengabdian, publikasi, dan HKI. Setiap grafik punya filter sendiri, bisa diganti tampilannya (garis, batang, atau data), dan diunduh sebagai gambar (PNG) atau data (CSV) sesuai filternya."
+              />
+
+              {error && (
+                <p
+                  role="alert"
+                  className="mt-5 rounded-xl bg-[#FFF1F1] px-4 py-3 text-[13px] text-[#B91C1C]"
+                >
+                  {error}
+                </p>
+              )}
+
+              {loading ? (
+                <p className="mt-10 text-center text-[13px] text-[#667360]">
+                  Memuat data infografis...
+                </p>
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {/* ---------- TOTAL + JURUSAN ---------- */}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <Reveal className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["year", "jurusan", "prodi"]}
+                        build={({ rows }) => {
+                          const t = aggregate(rows);
+
+                          return {
+                            title:
+                              "Total Penelitian, Pengabdian, Publikasi dan HKI",
+                            fileName: "total-p2m",
+                            labelHeader: "Kegiatan",
+                            labels: [
                               "Penelitian",
-                              SERIES[0],
-                              stats.map((j) => j.penelitian)
-                            ),
-                            mk(
                               "Pengabdian",
-                              SERIES[1],
-                              stats.map((j) => j.pengabdian)
-                            ),
-                            mk(
                               "Publikasi",
-                              SERIES[2],
-                              stats.map((j) => j.publikasi)
-                            ),
-                            mk("HKI", SERIES[3], stats.map((j) => j.hki)),
-                          ],
-                          modes: ["bar", "line", "table"],
-                          defaultMode: "bar",
-                        };
-                      }}
-                    />
-                  </Reveal>
-                </div>
+                              "HKI",
+                            ],
+                            series: [
+                              mk("Total", SERIES[0], [
+                                t.penelitian,
+                                t.pengabdian,
+                                t.publikasi,
+                                t.hki,
+                              ]),
+                            ],
+                            vary: true,
+                            modes: ["bar", "line", "pie", "table"],
+                            defaultMode: "bar",
+                          };
+                        }}
+                      />
+                    </Reveal>
 
-                {/* ---------- PARTISIPASI DOSEN ---------- */}
-                <Reveal>
-                  <FilteredChart
-                    data={data}
-                    wide
-                    dims={["jurusan", "prodi"]}
-                    build={({ rows }) => {
-                      const stats = perYear(rows, data.years);
+                    <Reveal delay={110} className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["year"]}
+                        build={({ rows }) => {
+                          const stats = data.jurusan.map((name) => ({
+                            name,
+                            ...aggregate(rows.filter((r) => r.jurusan === name)),
+                          }));
 
-                      return {
-                        title: "Grafik Persentase Partisipasi Dosen",
-                        fileName: "partisipasi-dosen",
-                        labelHeader: "Tahun",
-                        labels: stats.map((y) => String(y.year)),
-                        series: [
-                          mk(
-                            "Penelitian",
-                            SERIES[0],
-                            stats.map((y) => pct2(y.partPenelitian, y.dosen))
-                          ),
-                          mk(
-                            "Pengabdian",
-                            SERIES[1],
-                            stats.map((y) => pct2(y.partPengabdian, y.dosen))
-                          ),
-                          mk(
-                            "Publikasi",
-                            SERIES[2],
-                            stats.map((y) => pct2(y.partPublikasi, y.dosen))
-                          ),
-                        ],
-                        percent: true,
-                        yTitle: "Persen (%)",
-                        modes: ["line", "bar", "table"],
-                        defaultMode: "line",
-                        note: "Dihitung dari dosen yang terdaftar di Profil Peneliti.",
-                      };
-                    }}
-                  />
-                </Reveal>
+                          return {
+                            title:
+                              "Penelitian, Pengabdian, Publikasi dan HKI Jurusan",
+                            fileName: "p2m-per-jurusan",
+                            labelHeader: "Jurusan",
+                            labels: stats.map((j) => j.name),
+                            series: [
+                              mk(
+                                "Penelitian",
+                                SERIES[0],
+                                stats.map((j) => j.penelitian)
+                              ),
+                              mk(
+                                "Pengabdian",
+                                SERIES[1],
+                                stats.map((j) => j.pengabdian)
+                              ),
+                              mk(
+                                "Publikasi",
+                                SERIES[2],
+                                stats.map((j) => j.publikasi)
+                              ),
+                              mk("HKI", SERIES[3], stats.map((j) => j.hki)),
+                            ],
+                            modes: ["bar", "line", "table"],
+                            defaultMode: "bar",
+                          };
+                        }}
+                      />
+                    </Reveal>
+                  </div>
 
-                {/* ---------- TOTAL PER TAHUN ---------- */}
-                <Reveal>
-                  <FilteredChart
-                    data={data}
-                    wide
-                    dims={["jurusan", "prodi"]}
-                    build={({ rows }) => {
-                      const stats = perYear(rows, data.years);
-
-                      return {
-                        title:
-                          "Total Penelitian, Pengabdian, Publikasi Per Tahun",
-                        fileName: "total-per-tahun",
-                        labelHeader: "Tahun",
-                        labels: stats.map((y) => String(y.year)),
-                        series: [
-                          mk(
-                            "Penelitian",
-                            SERIES[0],
-                            stats.map((y) => y.penelitian)
-                          ),
-                          mk(
-                            "Pengabdian",
-                            SERIES[1],
-                            stats.map((y) => y.pengabdian)
-                          ),
-                          mk(
-                            "Publikasi",
-                            SERIES[2],
-                            stats.map((y) => y.publikasi)
-                          ),
-                        ],
-                        yTitle: "Total Data",
-                        modes: ["line", "bar", "table"],
-                        defaultMode: "line",
-                      };
-                    }}
-                  />
-                </Reveal>
-
-                {/* ---------- PERBANDINGAN PER TAHUN ---------- */}
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <Reveal className="h-full">
+                  {/* ---------- PARTISIPASI DOSEN ---------- */}
+                  <Reveal>
                     <FilteredChart
                       data={data}
+                      wide
                       dims={["jurusan", "prodi"]}
                       build={({ rows }) => {
                         const stats = perYear(rows, data.years);
 
                         return {
-                          title: "Perbandingan Penelitian Per Tahun",
-                          fileName: "penelitian-per-tahun",
+                          title: "Grafik Persentase Partisipasi Dosen",
+                          fileName: "partisipasi-dosen",
+                          labelHeader: "Tahun",
+                          labels: stats.map((y) => String(y.year)),
+                          series: [
+                            mk(
+                              "Penelitian",
+                              SERIES[0],
+                              stats.map((y) => pct2(y.partPenelitian, y.dosen))
+                            ),
+                            mk(
+                              "Pengabdian",
+                              SERIES[1],
+                              stats.map((y) => pct2(y.partPengabdian, y.dosen))
+                            ),
+                            mk(
+                              "Publikasi",
+                              SERIES[2],
+                              stats.map((y) => pct2(y.partPublikasi, y.dosen))
+                            ),
+                          ],
+                          percent: true,
+                          yTitle: "Persen (%)",
+                          modes: ["line", "bar", "table"],
+                          defaultMode: "line",
+                          note: "Dihitung dari dosen yang terdaftar di Profil Peneliti.",
+                        };
+                      }}
+                    />
+                  </Reveal>
+
+                  {/* ---------- TOTAL PER TAHUN ---------- */}
+                  <Reveal>
+                    <FilteredChart
+                      data={data}
+                      wide
+                      dims={["jurusan", "prodi"]}
+                      build={({ rows }) => {
+                        const stats = perYear(rows, data.years);
+
+                        return {
+                          title:
+                            "Total Penelitian, Pengabdian, Publikasi Per Tahun",
+                          fileName: "total-per-tahun",
                           labelHeader: "Tahun",
                           labels: stats.map((y) => String(y.year)),
                           series: [
@@ -2481,241 +2557,281 @@ export default function InfografisPage() {
                               SERIES[0],
                               stats.map((y) => y.penelitian)
                             ),
-                          ],
-                          vary: true,
-                          modes: ["pie", "bar", "line", "table"],
-                          defaultMode: "pie",
-                        };
-                      }}
-                    />
-                  </Reveal>
-
-                  <Reveal delay={110} className="h-full">
-                    <FilteredChart
-                      data={data}
-                      dims={["jurusan", "prodi"]}
-                      build={({ rows }) => {
-                        const stats = perYear(rows, data.years);
-
-                        return {
-                          title: "Perbandingan Publikasi Ilmiah Per Tahun",
-                          fileName: "publikasi-per-tahun",
-                          labelHeader: "Tahun",
-                          labels: stats.map((y) => String(y.year)),
-                          series: [
+                            mk(
+                              "Pengabdian",
+                              SERIES[1],
+                              stats.map((y) => y.pengabdian)
+                            ),
                             mk(
                               "Publikasi",
-                              SERIES[1],
+                              SERIES[2],
                               stats.map((y) => y.publikasi)
                             ),
                           ],
-                          vary: true,
-                          modes: ["pie", "bar", "line", "table"],
-                          defaultMode: "pie",
-                        };
-                      }}
-                    />
-                  </Reveal>
-                </div>
-
-                {/* ---------- PERBANDINGAN PER PRODI ---------- */}
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <Reveal className="h-full">
-                    <FilteredChart
-                      data={data}
-                      dims={["year", "jurusan"]}
-                      build={({ rows, visibleProdi }) => {
-                        const stats = visibleProdi.map((p) => ({
-                          ...p,
-                          ...aggregate(rows.filter((r) => r.prodi === p.name)),
-                        }));
-
-                        return {
-                          title: "Perbandingan Penelitian Per Prodi",
-                          fileName: "penelitian-per-prodi",
-                          labelHeader: "Program Studi",
-                          labels: stats.map((p) => p.short),
-                          fullLabels: stats.map((p) => p.name),
-                          series: [
-                            mk(
-                              "Penelitian",
-                              SERIES[0],
-                              stats.map((p) => p.penelitian)
-                            ),
-                          ],
-                          vary: true,
-                          modes: ["pie", "bar", "line", "table"],
-                          defaultMode: "pie",
+                          yTitle: "Total Data",
+                          modes: ["line", "bar", "table"],
+                          defaultMode: "line",
                         };
                       }}
                     />
                   </Reveal>
 
-                  <Reveal delay={110} className="h-full">
-                    <FilteredChart
-                      data={data}
-                      dims={["year", "jurusan"]}
-                      build={({ rows, visibleProdi }) => {
-                        const stats = visibleProdi.map((p) => ({
-                          ...p,
-                          ...aggregate(rows.filter((r) => r.prodi === p.name)),
-                        }));
+                  {/* ---------- PERBANDINGAN PER TAHUN ---------- */}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <Reveal className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["jurusan", "prodi"]}
+                        build={({ rows }) => {
+                          const stats = perYear(rows, data.years);
 
-                        return {
-                          title: "Perbandingan Publikasi Ilmiah Per Prodi",
-                          fileName: "publikasi-per-prodi",
-                          labelHeader: "Program Studi",
-                          labels: stats.map((p) => p.short),
-                          fullLabels: stats.map((p) => p.name),
-                          series: [
-                            mk(
-                              "Publikasi",
-                              SERIES[1],
-                              stats.map((p) => p.publikasi)
-                            ),
-                          ],
-                          vary: true,
-                          modes: ["pie", "bar", "line", "table"],
-                          defaultMode: "pie",
-                        };
-                      }}
-                    />
-                  </Reveal>
-                </div>
+                          return {
+                            title: "Perbandingan Penelitian Per Tahun",
+                            fileName: "penelitian-per-tahun",
+                            labelHeader: "Tahun",
+                            labels: stats.map((y) => String(y.year)),
+                            series: [
+                              mk(
+                                "Penelitian",
+                                SERIES[0],
+                                stats.map((y) => y.penelitian)
+                              ),
+                            ],
+                            vary: true,
+                            modes: ["pie", "bar", "line", "table"],
+                            defaultMode: "pie",
+                          };
+                        }}
+                      />
+                    </Reveal>
 
-                {/* ---------- JENIS PROGRAM ---------- */}
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <Reveal className="h-full">
+                    <Reveal delay={110} className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["jurusan", "prodi"]}
+                        build={({ rows }) => {
+                          const stats = perYear(rows, data.years);
+
+                          return {
+                            title: "Perbandingan Publikasi Ilmiah Per Tahun",
+                            fileName: "publikasi-per-tahun",
+                            labelHeader: "Tahun",
+                            labels: stats.map((y) => String(y.year)),
+                            series: [
+                              mk(
+                                "Publikasi",
+                                SERIES[1],
+                                stats.map((y) => y.publikasi)
+                              ),
+                            ],
+                            vary: true,
+                            modes: ["pie", "bar", "line", "table"],
+                            defaultMode: "pie",
+                          };
+                        }}
+                      />
+                    </Reveal>
+                  </div>
+
+                  {/* ---------- PERBANDINGAN PER PRODI ---------- */}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <Reveal className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["year", "jurusan"]}
+                        build={({ rows, visibleProdi }) => {
+                          const stats = visibleProdi.map((p) => ({
+                            ...p,
+                            ...aggregate(rows.filter((r) => r.prodi === p.name)),
+                          }));
+
+                          return {
+                            title: "Perbandingan Penelitian Per Prodi",
+                            fileName: "penelitian-per-prodi",
+                            labelHeader: "Program Studi",
+                            labels: stats.map((p) => p.short),
+                            fullLabels: stats.map((p) => p.name),
+                            series: [
+                              mk(
+                                "Penelitian",
+                                SERIES[0],
+                                stats.map((p) => p.penelitian)
+                              ),
+                            ],
+                            vary: true,
+                            modes: ["pie", "bar", "line", "table"],
+                            defaultMode: "pie",
+                          };
+                        }}
+                      />
+                    </Reveal>
+
+                    <Reveal delay={110} className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["year", "jurusan"]}
+                        build={({ rows, visibleProdi }) => {
+                          const stats = visibleProdi.map((p) => ({
+                            ...p,
+                            ...aggregate(rows.filter((r) => r.prodi === p.name)),
+                          }));
+
+                          return {
+                            title: "Perbandingan Publikasi Ilmiah Per Prodi",
+                            fileName: "publikasi-per-prodi",
+                            labelHeader: "Program Studi",
+                            labels: stats.map((p) => p.short),
+                            fullLabels: stats.map((p) => p.name),
+                            series: [
+                              mk(
+                                "Publikasi",
+                                SERIES[1],
+                                stats.map((p) => p.publikasi)
+                              ),
+                            ],
+                            vary: true,
+                            modes: ["pie", "bar", "line", "table"],
+                            defaultMode: "pie",
+                          };
+                        }}
+                      />
+                    </Reveal>
+                  </div>
+
+                  {/* ---------- JENIS PROGRAM ---------- */}
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <Reveal className="h-full">
+                      <FilteredShell
+                        data={data}
+                        dims={["year", "jurusan", "prodi"]}
+                        title="Penelitian Berdasarkan Jenis Program"
+                      >
+                        {({ rows }) => (
+                          <DataTable
+                            rows={sumMap(rows, "programPenelitian")}
+                            columns={programCols}
+                            controls={false}
+                            minWidth={320}
+                            footer={
+                              <tr className="border-t border-[#D9E2D3] bg-[#F6F9F3]">
+                                <td className={td} />
+                                <td className={`${td} font-semibold`}>Total</td>
+                                <td
+                                  className={`${td} text-right font-semibold text-[#31551F]`}
+                                >
+                                  {aggregate(rows).penelitian}
+                                </td>
+                              </tr>
+                            }
+                          />
+                        )}
+                      </FilteredShell>
+                    </Reveal>
+
+                    <Reveal delay={110} className="h-full">
+                      <FilteredChart
+                        data={data}
+                        dims={["year", "jurusan", "prodi"]}
+                        build={({ rows }) => {
+                          const jenis = sumMap(rows, "jenisPengabdian");
+
+                          return {
+                            title: "Perbandingan Pengabdian Per Jenis",
+                            fileName: "pengabdian-per-jenis",
+                            labelHeader: "Jenis",
+                            labels: jenis.map((j) => j.label),
+                            series: [
+                              mk(
+                                "Pengabdian",
+                                SERIES[1],
+                                jenis.map((j) => j.value)
+                              ),
+                            ],
+                            vary: true,
+                            modes: ["pie", "bar", "line", "table"],
+                            defaultMode: "pie",
+                          };
+                        }}
+                      />
+                    </Reveal>
+                  </div>
+
+                  {/* ---------- TABEL PER TAHUN ---------- */}
+                  <Reveal>
                     <FilteredShell
                       data={data}
-                      dims={["year", "jurusan", "prodi"]}
-                      title="Penelitian Berdasarkan Jenis Program"
+                      wide
+                      dims={["jurusan", "prodi"]}
+                      title="Data Statistik Keseluruhan Penelitian, Pengabdian, dan Publikasi Per Tahun"
                     >
                       {({ rows }) => (
                         <DataTable
-                          rows={sumMap(rows, "programPenelitian")}
-                          columns={programCols}
-                          controls={false}
-                          minWidth={320}
-                          footer={
-                            <tr className="border-t border-[#D9E2D3] bg-[#F6F9F3]">
-                              <td className={td} />
-                              <td className={`${td} font-semibold`}>Total</td>
-                              <td
-                                className={`${td} text-right font-semibold text-[#31551F]`}
-                              >
-                                {aggregate(rows).penelitian}
-                              </td>
-                            </tr>
-                          }
+                          rows={perYear(rows, data.years)}
+                          columns={yearCols}
+                          minWidth={1200}
+                          defaultSort={{ key: "year", dir: "desc" }}
                         />
                       )}
                     </FilteredShell>
                   </Reveal>
 
-                  <Reveal delay={110} className="h-full">
-                    <FilteredChart
+                  {/* ---------- TABEL DOSEN ---------- */}
+                  <Reveal>
+                    <FilteredShell
                       data={data}
-                      dims={["year", "jurusan", "prodi"]}
-                      build={({ rows }) => {
-                        const jenis = sumMap(rows, "jenisPengabdian");
+                      wide
+                      dims={["jurusan", "prodi"]}
+                      title="Data Kinerja Penelitian, Pengabdian, dan Publikasi Seluruh Dosen"
+                    >
+                      {({ filters }) => {
+                        const short = data.prodi.find(
+                          (p) => p.name === filters.prodi
+                        )?.short;
 
-                        return {
-                          title: "Perbandingan Pengabdian Per Jenis",
-                          fileName: "pengabdian-per-jenis",
-                          labelHeader: "Jenis",
-                          labels: jenis.map((j) => j.label),
-                          series: [
-                            mk(
-                              "Pengabdian",
-                              SERIES[1],
-                              jenis.map((j) => j.value)
-                            ),
-                          ],
-                          vary: true,
-                          modes: ["pie", "bar", "line", "table"],
-                          defaultMode: "pie",
-                        };
+                        const dosenRows = data.dosen.filter(
+                          (d) =>
+                            (filters.jurusan === ALL.jurusan ||
+                              d.jurusan === filters.jurusan) &&
+                            (filters.prodi === ALL.prodi || short === d.prodi)
+                        );
+
+                        return (
+                          <>
+                            <p className="mb-3 text-[12px] text-[#667360]">
+                              Total data: {dosenRows.length}
+                            </p>
+                            <DataTable
+                              rows={dosenRows}
+                              columns={dosenCols}
+                              minWidth={720}
+                            />
+                          </>
+                        );
                       }}
-                    />
+                    </FilteredShell>
                   </Reveal>
                 </div>
+              )}
+            </div>
+          </section>
 
-                {/* ---------- TABEL PER TAHUN ---------- */}
-                <Reveal>
-                  <FilteredShell
-                    data={data}
-                    wide
-                    dims={["jurusan", "prodi"]}
-                    title="Data Statistik Keseluruhan Penelitian, Pengabdian, dan Publikasi Per Tahun"
-                  >
-                    {({ rows }) => (
-                      <DataTable
-                        rows={perYear(rows, data.years)}
-                        columns={yearCols}
-                        minWidth={1200}
-                        defaultSort={{ key: "year", dir: "desc" }}
-                      />
-                    )}
-                  </FilteredShell>
-                </Reveal>
+          {/* =====================================================
+              ANIMASI (sama dengan Beranda)
+          ===================================================== */}
 
-                {/* ---------- TABEL DOSEN ---------- */}
-                <Reveal>
-                  <FilteredShell
-                    data={data}
-                    wide
-                    dims={["jurusan", "prodi"]}
-                    title="Data Kinerja Penelitian, Pengabdian, dan Publikasi Seluruh Dosen"
-                  >
-                    {({ filters }) => {
-                      const short = data.prodi.find(
-                        (p) => p.name === filters.prodi
-                      )?.short;
-
-                      const dosenRows = data.dosen.filter(
-                        (d) =>
-                          (filters.jurusan === ALL.jurusan ||
-                            d.jurusan === filters.jurusan) &&
-                          (filters.prodi === ALL.prodi || short === d.prodi)
-                      );
-
-                      return (
-                        <>
-                          <p className="mb-3 text-[12px] text-[#667360]">
-                            Total data: {dosenRows.length}
-                          </p>
-                          <DataTable
-                            rows={dosenRows}
-                            columns={dosenCols}
-                            minWidth={720}
-                          />
-                        </>
-                      );
-                    }}
-                  </FilteredShell>
-                </Reveal>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* =====================================================
-            ANIMASI (sama dengan Beranda)
-        ===================================================== */}
-
-        <style>{`
-          html {
-            scroll-behavior: smooth;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
+          <style>{`
             html {
-              scroll-behavior: auto;
+              scroll-behavior: smooth;
             }
-          }
-        `}</style>
-      </main>
+
+            @media (prefers-reduced-motion: reduce) {
+              html {
+                scroll-behavior: auto;
+              }
+            }
+          `}</style>
+        </main>
+      </TranslationsContext.Provider>
     </UpdatedAtContext.Provider>
   );
 }

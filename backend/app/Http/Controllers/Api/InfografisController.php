@@ -8,6 +8,7 @@ use App\Models\Pengabdian;
 use App\Models\Penelitian;
 use App\Models\Peneliti;
 use App\Models\Publikasi;
+use App\Models\TerjemahanInfografis;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
@@ -258,6 +259,32 @@ class InfografisController extends Controller
             ];
         })->values();
 
+        /* ---------- TERJEMAHAN (nama Indonesia => nama Inggris) ---------- */
+
+        $terjemahan = TerjemahanInfografis::query()
+            ->whereNotNull('nama_en')
+            ->where('nama_en', '!=', '')
+            ->pluck('nama_en', 'nama')
+            ->toArray();
+
+        /* singkatan prodi versi Inggris (mis. TI => IE), dibuat dari nama Inggrisnya */
+        $dipakaiEn = [];
+
+        foreach ($prodiList as $p) {
+            $namaEn = $terjemahan[$p['name']] ?? null;
+
+            if (! $namaEn) continue;
+
+            $short = $this->singkatan($namaEn);
+
+            if ($short === '' || in_array($short, $dipakaiEn, true)) {
+                $short = $namaEn;
+            }
+
+            $dipakaiEn[] = $short;
+            $terjemahan[$p['short']] = $short;
+        }
+
         /* ---------- TANGGAL PEMBARUAN ---------- */
 
         $diperbarui = collect([Penelitian::class, Pengabdian::class, Publikasi::class, Hki::class, Peneliti::class])
@@ -270,11 +297,12 @@ class InfografisController extends Controller
                 'updated_at' => $diperbarui
                     ? \Illuminate\Support\Carbon::parse($diperbarui)->timezone('Asia/Jakarta')->format('Y-m-d')
                     : now('Asia/Jakarta')->format('Y-m-d'),
-                'years'      => $tahun,
-                'jurusan'    => $jurusanList,
-                'prodi'      => $prodiList,
-                'rows'       => array_values($baris),
-                'dosen'      => $dosen,
+                'years'        => $tahun,
+                'jurusan'      => $jurusanList,
+                'prodi'        => $prodiList,
+                'rows'         => array_values($baris),
+                'dosen'        => $dosen,
+                'translations' => $terjemahan,
             ],
         ]);
     }
@@ -373,6 +401,15 @@ class InfografisController extends Controller
 
             return $p + ['short' => $singkat];
         });
+    }
+
+    /* singkatan satu nama (dipakai untuk nama prodi versi Inggris) */
+    private function singkatan(string $nama): string
+    {
+        return collect(preg_split('/\s+/', trim($nama)))
+            ->reject(fn ($k) => in_array(Str::lower($k), ['dan', 'di', 'ke', 'of', 'the', 'and'], true))
+            ->map(fn ($k) => Str::upper(Str::substr($k, 0, 1)))
+            ->implode('');
     }
 
     private function barisKosong(int $tahun, string $prodi, string $jurusan, int $dosen): array

@@ -52,30 +52,38 @@ export default function Footer() {
 
           {/* =================================================
               BRAND
+              min-w-0: kolom grid boleh menyempit, jadi isinya
+              tidak mendorong (meluap) ke kolom di sebelahnya.
           ================================================= */}
 
-          <div>
+          <div className="min-w-0">
 
-            {/* LOGO PARTNER */}
+            {/* LOGO PARTNER
+                Tinggi logo dibuat lebih kecil supaya total lebarnya
+                muat di kolom ini. flex-wrap jaga-jaga kalau layar
+                sempit: logo turun ke baris bawah, bukan meluap. */}
 
-            <div className="flex h-[55px] items-center gap-5">
+            <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-3">
 
               <Image
-                src="/img/Logo_kemendikti.png"
+                src="/img/Logo kemendikti.webp"
                 alt="Kementerian Pendidikan Tinggi, Sains, dan Teknologi"
                 width={150}
                 height={50}
-                className="h-[38px] w-auto object-contain"
+                className="h-[38px] w-auto max-w-full object-contain"
               />
 
-              <div className="h-9 w-px bg-[#F5F1DE]/25" />
+              <div
+                aria-hidden
+                className="hidden h-8 w-px bg-[#F5F1DE]/25 sm:block"
+              />
 
               <Image
-                src="/img/Logo_sdgs.png"
+                src="/img/Logo SDGs.webp"
                 alt="Sustainable Development Goals"
                 width={300}
                 height={100}
-                className="h-[68px] w-auto object-contain"
+                className="h-[32px] w-auto max-w-full object-contain"
               />
 
             </div>
@@ -112,7 +120,7 @@ export default function Footer() {
               NAVIGASI
           ================================================= */}
 
-          <div>
+          <div className="min-w-0">
 
             <h3 className={HEADING_CLASS}>Navigasi</h3>
 
@@ -131,7 +139,7 @@ export default function Footer() {
               INFORMASI
           ================================================= */}
 
-          <div>
+          <div className="min-w-0">
 
             <h3 className={HEADING_CLASS}>Informasi</h3>
 
@@ -150,7 +158,7 @@ export default function Footer() {
               KONTAK
           ================================================= */}
 
-          <div>
+          <div className="min-w-0">
 
             <h3 className={HEADING_CLASS}>Kontak</h3>
 
