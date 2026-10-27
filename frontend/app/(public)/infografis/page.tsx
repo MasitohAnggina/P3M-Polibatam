@@ -433,7 +433,7 @@ function Reveal({
         transitionDelay: inView ? `${delay}ms` : "0ms",
         transitionTimingFunction: "cubic-bezier(.22,1,.36,1)",
       }}
-      className={`transition-[opacity,transform] duration-700 motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${
+      className={`min-w-0 transition-[opacity,transform] duration-700 motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${
         inView ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
       } ${className}`}
     >
@@ -618,7 +618,7 @@ function PanelShell({
   const updatedAt = updatedAtProp ?? updatedFromContext;
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
       <h3 className="bg-[#31551F] px-5 py-3.5 text-center text-[13.5px] font-semibold leading-snug text-white sm:text-[14px]">
         {title}
       </h3>
@@ -1310,7 +1310,7 @@ function DataTable<T>({
           </p>
 
           {pages > 1 && (
-            <nav aria-label="Halaman tabel" className="flex items-center gap-1.5">
+            <nav aria-label="Halaman tabel" className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 aria-label="Halaman sebelumnya"
@@ -1830,7 +1830,7 @@ function ChartPanel({
       filters={filters}
     >
       {/* TOOLBAR */}
-      <div className="mb-3 flex items-center justify-end gap-1">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-1">
         {MODE_ORDER.filter((m) => modes.includes(m)).map((m) => {
           const Icon = MODE_META[m].icon;
           const active = mode === m;
@@ -2418,7 +2418,7 @@ export default function InfografisPage() {
               ) : (
                 <div className="mt-6 space-y-5">
                   {/* ---------- TOTAL + JURUSAN ---------- */}
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Reveal className="h-full">
                       <FilteredChart
                         data={data}
@@ -2577,7 +2577,7 @@ export default function InfografisPage() {
                   </Reveal>
 
                   {/* ---------- PERBANDINGAN PER TAHUN ---------- */}
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Reveal className="h-full">
                       <FilteredChart
                         data={data}
@@ -2634,7 +2634,7 @@ export default function InfografisPage() {
                   </div>
 
                   {/* ---------- PERBANDINGAN PER PRODI ---------- */}
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Reveal className="h-full">
                       <FilteredChart
                         data={data}
@@ -2699,7 +2699,7 @@ export default function InfografisPage() {
                   </div>
 
                   {/* ---------- JENIS PROGRAM ---------- */}
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Reveal className="h-full">
                       <FilteredShell
                         data={data}
