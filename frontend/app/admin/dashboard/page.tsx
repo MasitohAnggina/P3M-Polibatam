@@ -148,6 +148,10 @@ const TREND_RANGES = [
   { value: "3", label: "3 Tahun Terakhir" },
 ];
 
+/* Data Terbaru hanya tampil selama 7 hari, setelah itu hilang
+   dari daftar (data aslinya tetap ada di halaman masing-masing). */
+const LATEST_DAYS = 7;
+
 /* pertumbuhan terhadap tahun sebelumnya, contoh "+9%" */
 function growth(current: number, previous: number) {
   if (previous <= 0) return null;
@@ -207,6 +211,25 @@ function formatShortDate(iso: string) {
   if (!year || !month || !day || month < 1 || month > 12) return iso;
 
   return `${String(day).padStart(2, "0")} ${SHORT_MONTHS[month - 1]} ${year}`;
+}
+
+/* Apakah tanggal ("YYYY-MM-DD") masih dalam rentang `days` hari terakhir?
+   Dihitung per hari kalender (jam diabaikan): data hari ini dan 6 hari
+   sebelumnya masih tampil, hari ke-7 sudah hilang. Tanggal yang tidak
+   terbaca tetap ditampilkan supaya data tidak hilang karena salah format. */
+function isWithinLastDays(iso: string, days: number) {
+  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return true;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateStart = new Date(year, month - 1, day);
+
+  const ageInDays = Math.round(
+    (todayStart.getTime() - dateStart.getTime()) / 86_400_000
+  );
+
+  return ageInDays < days;
 }
 
 /* Tanggal hari ini ("Rabu, 14 Oktober 2026"). Diisi setelah halaman
@@ -885,17 +908,23 @@ function DistributionChart({
 
 /* =========================================================
    LATEST DATA
+   Hanya menampilkan data dari 7 hari terakhir (LATEST_DAYS).
 ========================================================= */
 
 const thClass =
   "whitespace-nowrap border-b border-dashed border-[#DCE4DE] px-3 py-4 text-[12px] font-medium text-[#7A867F]";
 
 function LatestDataCard({ items }: { items: LatestData[] }) {
+  /* data yang sudah lewat 7 hari tidak ditampilkan lagi */
+  const recentItems = items.filter((item) =>
+    isWithinLastDays(item.date, LATEST_DAYS)
+  );
+
   return (
     <Panel
       icon={<Table size={16} strokeWidth={1.8} />}
       title="Data Terbaru"
-      description="Data terakhir yang ditambahkan atau diperbarui."
+      description={`Data yang ditambahkan atau diperbarui dalam ${LATEST_DAYS} hari terakhir.`}
       flush
     >
       <div className="w-full overflow-x-auto">
@@ -921,18 +950,18 @@ function LatestDataCard({ items }: { items: LatestData[] }) {
           </thead>
 
           <tbody>
-            {items.length === 0 && (
+            {recentItems.length === 0 && (
               <tr>
                 <td
                   colSpan={5}
                   className="px-5 py-10 text-center text-[13px] text-[#8A948E]"
                 >
-                  Belum ada data.
+                  Tidak ada data baru dalam {LATEST_DAYS} hari terakhir.
                 </td>
               </tr>
             )}
 
-            {items.map((item, index) => {
+            {recentItems.map((item, index) => {
               const cell = "bg-white group-hover:bg-[#F2F8F2]";
 
               return (
