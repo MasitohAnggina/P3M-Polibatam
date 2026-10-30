@@ -61,6 +61,12 @@ const poppins = Poppins({
    judul kartu  : 17-18
    isi          : 13.5-14 (leading 1.75)
    meta/chip    : 11-12.5
+
+   BREAKPOINT GRID KARTU
+   Grid kartu (Layanan, Statistik, Akses Cepat) berpindah ke 3 / 5
+   kolom mulai lebar 860px, bukan 1024px (lg). Jadi jendela browser
+   yang tidak penuh atau layar laptop dengan scaling tinggi tetap
+   mendapat susunan kolom yang sama dengan layar lebar.
 ========================================================= */
 
 /* =========================================================
@@ -426,7 +432,7 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
     return () => cancelAnimationFrame(raf);
   }, [inView, to]);
 
-    return (
+  return (
     <span ref={ref} translate="no" className="notranslate">
       {`${value}${suffix}`}
     </span>
@@ -563,9 +569,12 @@ function NewsPhoto({
 
 /* Kartu layanan.
    Tautan internal memakai <Link>; tautan luar (mis. Jurnal) memakai
-   <a> yang dibuka di tab baru dan diberi ikon panah miring. */
+   <a> yang dibuka di tab baru dan diberi ikon panah miring.
+
+   Padding: p-6 (mobile), p-5 di 860-1023px (3 kolom masih sempit),
+   p-7 mulai 1024px. */
 const serviceCardClass =
-  "group flex w-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]";
+  "group flex w-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-6 transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] min-[860px]:p-5 lg:p-7";
 
 function ServiceCard({ service }: { service: Service }) {
   const Icon = service.icon;
@@ -968,6 +977,8 @@ export default function HomePage() {
 
       {/* =====================================================
           LAYANAN UTAMA
+          grid: 1 kolom (< 640px), 2 kolom (640-859px),
+          3 kolom (>= 860px)
       ===================================================== */}
 
       <section id="layanan" className="scroll-mt-20 bg-white py-20 md:py-28">
@@ -977,13 +988,19 @@ export default function HomePage() {
             description="Layanan P2M Polibatam untuk mendukung penelitian, pengabdian, publikasi, jurnal ilmiah, pengelolaan kekayaan intelektual, dan informasi kegiatan."
           />
 
-          <div className="flex flex-wrap justify-center gap-5">
+          {/* Grid otomatis: kolom selebar minimal 280px, sisanya dibagi rata.
+              Container 1120px -> 3 kolom, tablet -> 2 kolom, HP -> 1 kolom.
+              Tidak bergantung pada breakpoint Tailwind atau ukuran font
+              browser, jadi hasilnya sama di Chrome dan Edge. */}
+          <div
+            className="grid gap-5"
+            style={{
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+            }}
+          >
             {services.map((service, index) => (
-              <Reveal
-                key={service.href}
-                delay={index * 100}
-                className="flex w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]"
-              >
+              <Reveal key={service.href} delay={index * 100} className="flex">
                 <ServiceCard service={service} />
               </Reveal>
             ))}
@@ -993,6 +1010,7 @@ export default function HomePage() {
 
       {/* =====================================================
           STATISTIK
+          grid otomatis: 5 statistik dalam satu baris di layar lebar
       ===================================================== */}
 
       <section
@@ -1013,7 +1031,15 @@ export default function HomePage() {
         />
 
         <div className="relative mx-auto max-w-[1120px] px-5 md:px-7">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Grid otomatis: 5 statistik muat satu baris selama wadah
+              minimal sekitar 660px (laptop dan desktop). Di HP otomatis
+              turun jadi 2 kolom. Tidak bergantung pada breakpoint. */}
+          <div
+            className="grid gap-x-4 gap-y-10"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            }}
+          >
             {statCards.map((stat, index) => {
               const Icon = stat.icon;
 
@@ -1482,6 +1508,7 @@ export default function HomePage() {
 
       {/* =====================================================
           AKSES CEPAT
+          grid: 1 kolom, 2 kolom (>= 640px), 3 kolom (>= 860px)
       ===================================================== */}
 
       <section className="bg-[#F6F9F3] py-20 md:py-28">
@@ -1491,7 +1518,7 @@ export default function HomePage() {
             description="Tautan ke platform penelitian dan publikasi yang sering digunakan sivitas akademika."
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[860px]:grid-cols-3">
             {quickLinks.map((link, index) => (
               <Reveal key={link.name} delay={(index % 3) * 90}>
                 <a
@@ -1530,6 +1557,12 @@ export default function HomePage() {
       <style>{`
         html {
           scroll-behavior: smooth;
+
+          /* kunci ukuran dasar rem = 16px. Padding, ikon, dan jarak di
+             Tailwind memakai rem, sedangkan teks memakai px. Tanpa ini,
+             browser dengan pengaturan font besar (mis. Chrome "Large")
+             membuat kartu dan jarak membesar sementara teks tetap. */
+          font-size: 16px;
         }
 
         /* animasi "timbul": muncul dari bawah saat konten slide berganti */

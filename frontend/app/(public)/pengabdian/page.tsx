@@ -68,6 +68,9 @@ const poppins = Poppins({
    label/meta   : 11-13
 
    FOTO KEGIATAN
+   Foto bersifat opsional. Kalau admin tidak mengunggah gambar,
+   area foto (thumbnail di daftar dan foto besar di detail) tidak
+   ditampilkan, sehingga yang tersisa hanya teksnya.
    Admin bisa mengunggah semua jenis gambar dengan resolusi berapa
    pun. Gambar ditampilkan dengan object-cover, jadi tepi gambar
    yang bukan 16:9 bisa terpotong saat tampil.
@@ -237,11 +240,8 @@ type ApiCommunityService = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 const BASE_URL = API_URL.replace(/\/api\/?$/, "");
 
-/* gambar transparan 1x1, dipakai kalau kegiatan belum punya gambar */
-const EMPTY_IMAGE =
-  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-
-/* Jaga-jaga kalau API mengirim path relatif, bukan URL lengkap */
+/* Jaga-jaga kalau API mengirim path relatif, bukan URL lengkap.
+   Mengembalikan string kosong kalau kegiatan tidak punya gambar. */
 function imageUrl(path: string | null): string {
   if (!path) return "";
   if (/^(https?:|blob:|data:)/.test(path)) return path;
@@ -1038,18 +1038,20 @@ export default function PengabdianPage() {
                       className="group block w-full rounded-2xl border border-[#D9E2D3] bg-white p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-5"
                     >
                       <span className="flex items-center gap-4 md:gap-5">
-                        {/* THUMBNAIL */}
-                        <span className="relative h-[64px] w-[88px] shrink-0 overflow-hidden rounded-xl bg-[#EEF4EA] sm:h-[76px] sm:w-[108px]">
-                          <Image
-                            src={service.image || EMPTY_IMAGE}
-                            unoptimized
-                            alt={service.title}
-                            fill
-                            quality={90}
-                            sizes="(max-width: 640px) 88px, 108px"
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        </span>
+                        {/* THUMBNAIL (hanya tampil kalau ada gambar) */}
+                        {service.image && (
+                          <span className="relative h-[64px] w-[88px] shrink-0 overflow-hidden rounded-xl bg-[#EEF4EA] sm:h-[76px] sm:w-[108px]">
+                            <Image
+                              src={service.image}
+                              unoptimized
+                              alt={service.title}
+                              fill
+                              quality={90}
+                              sizes="(max-width: 640px) 88px, 108px"
+                              className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </span>
+                        )}
 
                         {/* ISI */}
                         <span className="block min-w-0 flex-1">
@@ -1300,7 +1302,8 @@ function ServiceDetail({
   return (
     <>
       {/* FOTO BESAR (selebar konten, sama dengan lebar bagian isi di bawahnya)
-          Rasio 16:9, minimal 1920 x 1080 px, PNG atau JPG */}
+          Rasio 16:9, minimal 1920 x 1080 px, PNG atau JPG.
+          Hanya tampil kalau kegiatan punya gambar. */}
       <section className="bg-white pt-8 md:pt-10">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <button
@@ -1317,23 +1320,25 @@ function ServiceDetail({
             Kembali ke Daftar Pengabdian
           </button>
 
-          <Reveal className="mt-5">
-            <div className="relative aspect-[16/9] max-h-[420px] w-full overflow-hidden rounded-2xl border border-[#D9E2D3] bg-[#EEF4EA] shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
-              <Image
-                src={service.image || EMPTY_IMAGE}
-                            unoptimized
-                alt={service.title}
-                fill
-                priority
-                quality={90}
-                sizes="(max-width: 1120px) 100vw, 1120px"
-                className="object-cover"
-              />
-            </div>
-          </Reveal>
+          {service.image && (
+            <Reveal className="mt-5">
+              <div className="relative aspect-[16/9] max-h-[420px] w-full overflow-hidden rounded-2xl border border-[#D9E2D3] bg-[#EEF4EA] shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
+                <Image
+                  src={service.image}
+                  unoptimized
+                  alt={service.title}
+                  fill
+                  priority
+                  quality={90}
+                  sizes="(max-width: 1120px) 100vw, 1120px"
+                  className="object-cover"
+                />
+              </div>
+            </Reveal>
+          )}
 
           {/* JUDUL DAN INFORMASI RINGKAS (di bawah foto) */}
-          <Reveal delay={80} className="mt-8">
+          <Reveal delay={80} className={service.image ? "mt-8" : "mt-6"}>
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-lg bg-[#31551F] px-3 py-1 text-[11.5px] font-semibold text-white">
                 {service.group}

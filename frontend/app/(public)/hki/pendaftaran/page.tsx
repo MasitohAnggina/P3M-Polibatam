@@ -59,6 +59,17 @@ const poppins = Poppins({
    FOTO TIM PENGELOLA
    format PNG atau JPG, rasio 4:3, minimal 1280 x 960 px,
    maksimal 5 MB (diatur lewat halaman admin Tim Pengelola HKI).
+
+   GRID KARTU (class .kartu-grid, didefinisikan di <style> bawah)
+   Jumlah kolom ditentukan oleh LEBAR WADAH kartu (container query),
+   bukan lebar jendela dan bukan breakpoint Tailwind. Jadi hasilnya
+   sama di Chrome dan Edge, apa pun zoom atau ukuran font browsernya.
+     wadah >= 880px : 3 kolom
+     wadah >= 580px : 2 kolom
+     di bawahnya    : 1 kolom
+   Baris terakhir yang tidak penuh tetap rata tengah.
+   Varian: .kartu-grid--dua (maksimal 2 kolom), .kartu-grid--rapat
+   (jarak antar kartu 24px).
 ========================================================= */
 
 /* =========================================================
@@ -396,8 +407,8 @@ export default function PendaftaranHKIPage() {
             description="Hak Kekayaan Intelektual (HKI) adalah hak hukum bagi pencipta atau penemu atas karya hasil pemikirannya, sehingga mereka dapat menikmati manfaat ekonominya. Di Indonesia, HKI terbagi menjadi dua kelompok."
           />
 
-          {/* DUA KELOMPOK HKI */}
-          <div className="grid gap-5 md:grid-cols-2">
+          {/* DUA KELOMPOK HKI (maksimal 2 kolom) */}
+          <div className="kartu-grid kartu-grid--dua">
             {hkiCategories.map((item, index) => {
               const Icon = item.icon;
 
@@ -429,6 +440,7 @@ export default function PendaftaranHKIPage() {
       {/* =====================================================
           JENIS HKI
           (kartu grid seperti "Layanan Utama" di Beranda)
+          3 kolom; baris terakhir (2 kartu) rata tengah
       ===================================================== */}
       <section
         id="jenis-hki"
@@ -441,16 +453,12 @@ export default function PendaftaranHKIPage() {
             description="Pendaftaran HKI merupakan proses pengajuan perlindungan atas hasil karya, inovasi, dan ciptaan sivitas akademika Politeknik Negeri Batam."
           />
 
-          <div className="flex flex-wrap justify-center gap-5">
+          <div className="kartu-grid">
             {hkiTypes.map((item, index) => {
               const Icon = item.icon;
 
               return (
-                <Reveal
-                  key={item.title}
-                  delay={index * 110}
-                  className="flex w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]"
-                >
+                <Reveal key={item.title} delay={index * 110} className="flex">
                   <article className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-2 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)]">
                     {/* sapuan warna saat hover */}
                     <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
@@ -549,12 +557,12 @@ export default function PendaftaranHKIPage() {
               </div>
             </Reveal>
           ) : (
-            <div className="flex flex-wrap justify-center gap-6">
+            <div className="kartu-grid kartu-grid--rapat">
               {team.map((member, index) => (
                 <Reveal
                   key={member.id}
                   delay={(index % 3) * 110}
-                  className="flex w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                  className="flex"
                 >
                   <article className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)]">
                     {/* FOTO (landscape 4:3). Unggahan dari admin minimal
@@ -628,7 +636,7 @@ export default function PendaftaranHKIPage() {
             description="Akses materi dan panduan yang berkaitan dengan pengelolaan Hak Kekayaan Intelektual Polibatam."
           />
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="kartu-grid kartu-grid--dua">
             {relatedInfo.map((item, index) => {
               const Icon = item.icon;
 
@@ -674,12 +682,52 @@ export default function PendaftaranHKIPage() {
       </section>
 
       {/* =====================================================
-          ANIMASI (sama dengan Beranda)
+          GAYA HALAMAN
       ===================================================== */}
 
       <style>{`
         html {
           scroll-behavior: smooth;
+
+          /* kunci ukuran dasar rem = 16px supaya padding, ikon, dan jarak
+             (yang memakai rem) tidak membesar di browser dengan pengaturan
+             font besar. Idealnya dipindah ke globals.css agar berlaku di
+             semua halaman. */
+          font-size: 16px;
+        }
+
+        /* GRID KARTU berbasis lebar wadah (container query).
+           Tidak bergantung pada breakpoint Tailwind atau lebar jendela. */
+        .kartu-grid {
+          --gap: 20px;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: var(--gap);
+          container-type: inline-size;
+        }
+
+        .kartu-grid--rapat {
+          --gap: 24px;
+        }
+
+        .kartu-grid > * {
+          flex: 0 0 auto;
+          width: 100%;
+        }
+
+        /* 2 kolom */
+        @container (min-width: 580px) {
+          .kartu-grid > * {
+            width: calc((100% - var(--gap)) / 2 - 0.5px);
+          }
+        }
+
+        /* 3 kolom (kecuali varian "dua") */
+        @container (min-width: 880px) {
+          .kartu-grid:not(.kartu-grid--dua) > * {
+            width: calc((100% - var(--gap) * 2) / 3 - 0.5px);
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

@@ -120,14 +120,14 @@ export default function AdminHeader() {
       {/* =====================================================
           PAGE TITLE
           ===================================================== */}
-      <div className="flex min-w-0 flex-1 items-center justify-between px-[28px]">
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 sm:px-[28px]">
         {/* Title + Subtitle */}
         <div className="min-w-0">
-          <h1 className="m-0 text-[18px] font-bold leading-[1.3] text-white">
+          <h1 className="m-0 truncate text-[15px] font-bold leading-[1.3] text-white sm:text-[18px]">
             {currentPage.title}
           </h1>
 
-          <p className="m-0 mt-[2px] truncate text-[13px] leading-[1.4] text-[#C6E6CB]">
+          <p className="m-0 mt-[2px] truncate text-[11.5px] leading-[1.4] text-[#C6E6CB] sm:text-[13px]">
             {currentPage.subtitle}
           </p>
         </div>
@@ -139,6 +139,7 @@ export default function AdminHeader() {
           {/* Admin */}
           <button
             type="button"
+            aria-label="Admin"
             className="flex items-center gap-[7px] border-0 bg-transparent p-0 text-white"
           >
             <UserCircle
@@ -146,7 +147,7 @@ export default function AdminHeader() {
               strokeWidth={1.8}
             />
 
-            <span className="text-[13px] font-semibold">
+            <span className="hidden text-[13px] font-semibold sm:inline">
               Admin
             </span>
           </button>

@@ -320,15 +320,15 @@ export default function DashboardPage() {
     <main
       className={`${poppins.className} min-h-[calc(100vh-78px)] overflow-x-hidden bg-[linear-gradient(135deg,#F3F7F3_0%,#EDF5EE_50%,#E2F0E4_100%)] px-3 py-4 text-[#26352D] sm:px-5 sm:py-6 md:px-8 md:py-8`}
     >
-      <div className="mx-auto w-full max-w-[1320px]">
+      <div className="mx-auto w-full min-w-0 max-w-[1320px]">
         {/* =====================================================
             PAGE HEADER
         ===================================================== */}
 
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-[0_2px_10px_rgba(38,53,45,0.06)]">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white shadow-[0_2px_10px_rgba(38,53,45,0.06)] sm:h-10 sm:w-10">
                 <LayoutDashboard
                   size={18}
                   strokeWidth={1.8}
@@ -336,22 +336,22 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <h1 className="text-[26px] font-medium tracking-[-0.02em] sm:text-[32px]">
+              <h1 className="min-w-0 truncate text-[22px] font-medium tracking-[-0.02em] sm:text-[32px]">
                 Dashboard
               </h1>
             </div>
 
-            <p className="mt-2 text-[13px] leading-6 text-[#7A867F] sm:ml-[52px]">
+            <p className="mt-2 text-[12.5px] leading-5 text-[#7A867F] sm:ml-[52px] sm:text-[13px] sm:leading-6">
               Ringkasan data pengelolaan P2M Politeknik Negeri Batam.
             </p>
           </div>
 
-          <p className="inline-flex h-10 shrink-0 items-center gap-2 self-start rounded-full bg-white px-4 text-[12px] font-medium text-[#59655E] shadow-[0_1px_4px_rgba(38,53,45,0.05)] sm:self-auto">
+          <p className="inline-flex min-h-9 w-fit max-w-full items-center gap-2 self-start rounded-full bg-white px-3.5 py-2 text-[12px] font-medium leading-tight text-[#59655E] shadow-[0_1px_4px_rgba(38,53,45,0.05)] sm:h-10 sm:shrink-0 sm:self-auto sm:px-4 sm:py-0">
             <CalendarDays
               size={14}
               strokeWidth={1.8}
               aria-hidden
-              className="text-[#2E7D32]"
+              className="shrink-0 text-[#2E7D32]"
             />
             <span>{today || "\u00A0"}</span>
           </p>
@@ -370,9 +370,9 @@ export default function DashboardPage() {
         ===================================================== */}
 
         {/* Total + lima kategori, gaya pill seperti ringkasan di halaman
-            Penelitian. Tiga per baris, jadi separuhnya turun ke baris bawah.
-            Total = jumlah kelima kategori. */}
-        <div className="grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-3">
+            Penelitian. 1 kolom di layar kecil, 2 kolom di layar sedang,
+            3 kolom di layar lebar. Total = jumlah kelima kategori. */}
+        <div className="grid grid-cols-1 gap-x-3 gap-y-4 min-[480px]:grid-cols-2 sm:grid-cols-3 sm:gap-y-5">
           <SummaryPill
             label="Total Data"
             value={totalData}
@@ -479,7 +479,7 @@ function StatusPanel({
   onRetry: () => void;
 }) {
   return (
-    <div className="rounded-[28px] bg-white/70 px-6 py-16 text-center shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur">
+    <div className="rounded-[28px] bg-white/70 px-4 py-14 text-center shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:px-6 sm:py-16">
       <p
         role={loading ? "status" : "alert"}
         className={`text-[13px] font-medium ${
@@ -531,7 +531,9 @@ function Panel({
           </div>
 
           <div className="min-w-0">
-            <h2 className="text-[14px] font-medium text-[#33423A]">{title}</h2>
+            <h2 className="text-[14px] font-medium leading-5 text-[#33423A]">
+              {title}
+            </h2>
 
             {description && (
               <p className="mt-0.5 text-[12px] leading-5 text-[#8A948E]">
@@ -546,7 +548,7 @@ function Panel({
 
       <div
         className={`mt-4 min-w-0 flex-1 rounded-[22px] bg-white ${
-          flush ? "overflow-hidden" : "p-4 sm:p-5"
+          flush ? "overflow-hidden" : "p-3 sm:p-5"
         }`}
       >
         {children}
@@ -617,17 +619,17 @@ function SummaryPill({
 
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 pl-1 text-[12px] text-[#7A867F]">{label}</p>
+      <p className="mb-1.5 truncate pl-1 text-[12px] text-[#7A867F]">{label}</p>
 
       <div
-        className={`flex h-11 items-center justify-between gap-3 rounded-full px-5 text-[14px] font-medium tabular-nums ${className}`}
+        className={`flex h-11 items-center justify-between gap-2 rounded-full px-4 text-[14px] font-medium tabular-nums sm:gap-3 sm:px-5 ${className}`}
       >
-        <span>{value}</span>
+        <span className="min-w-0 truncate">{value}</span>
 
         {growthLabel && (
           <span
             title="Dibandingkan tahun sebelumnya"
-            className="inline-flex items-center gap-1 rounded-full bg-white/30 px-2.5 py-1 text-[11px] font-medium leading-none"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/30 px-2 py-1 text-[10.5px] font-medium leading-none sm:px-2.5 sm:text-[11px]"
           >
             <TrendIcon size={12} strokeWidth={2} aria-hidden />
             {growthLabel}
@@ -641,7 +643,8 @@ function SummaryPill({
 /* =========================================================
    TREND CHART
    Garis bantu dan batang memakai persen terhadap area grafik,
-   jadi selalu sejajar di semua ukuran layar.
+   jadi selalu sejajar di semua ukuran layar. Di layar kecil grafik
+   bisa digeser ke samping (scroll horizontal).
 ========================================================= */
 
 const MIN_AXIS = 3;
@@ -671,7 +674,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
     <div>
       {/* LEGEND */}
 
-      <ul className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2">
+      <ul className="mb-5 grid grid-cols-2 gap-x-4 gap-y-2 min-[480px]:flex min-[480px]:flex-wrap min-[480px]:items-center min-[480px]:gap-x-5 sm:mb-6">
         {trendSeries.map((s) => (
           <li
             key={s.key}
@@ -679,7 +682,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
           >
             <span
               aria-hidden
-              className="h-2.5 w-2.5 rounded-full"
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: s.color }}
             />
             {s.label}
@@ -687,16 +690,16 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
         ))}
       </ul>
 
-      <div className="overflow-x-auto pb-1">
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
         <div
           role="img"
           aria-label={summary}
-          className="relative h-[270px]"
-          style={{ minWidth: `${56 + data.length * 120}px` }}
+          className="relative h-[250px] sm:h-[270px]"
+          style={{ minWidth: `${52 + data.length * 96}px` }}
         >
           {/* AREA GRAFIK */}
 
-          <div className="absolute bottom-9 left-10 right-2 top-14">
+          <div className="absolute bottom-9 left-9 right-2 top-14 sm:left-10">
             {/* garis bantu + angka sumbu Y */}
             {ticks.map((tick) => (
               <div
@@ -712,7 +715,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
                       : "border-t border-dashed border-[#DCE4DE]"
                   }
                 />
-                <span className="absolute right-full top-0 -translate-y-1/2 pr-2.5 text-[11px] tabular-nums text-[#8A948E]">
+                <span className="absolute right-full top-0 -translate-y-1/2 pr-2 text-[11px] tabular-nums text-[#8A948E] sm:pr-2.5">
                   {tick}
                 </span>
               </div>
@@ -726,7 +729,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
               {data.map((item, yearIndex) => (
                 <div
                   key={item.year}
-                  className={`flex h-full min-w-0 items-end justify-center gap-1 px-2 sm:gap-1.5 ${
+                  className={`flex h-full min-w-0 items-end justify-center gap-0.5 px-1.5 sm:gap-1.5 sm:px-2 ${
                     /* garis pembatas antar tahun */
                     yearIndex > 0 ? "border-l border-[#D5DFD7]" : ""
                   }`}
@@ -756,7 +759,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
                               {/* angka selalu tampil di atas batang */}
                               <span
                                 aria-hidden
-                                className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[10.5px] font-medium tabular-nums text-[#52665A]"
+                                className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[10px] font-medium tabular-nums text-[#52665A] sm:text-[10.5px]"
                               >
                                 {value}
                               </span>
@@ -779,7 +782,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
           {/* label tahun (kolomnya sejajar dengan batang) */}
           <div
             aria-hidden
-            className="absolute bottom-1 left-10 right-2 grid"
+            className="absolute bottom-1 left-9 right-2 grid sm:left-10"
             style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}
           >
             {data.map((item) => (
@@ -793,6 +796,13 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
           </div>
         </div>
       </div>
+
+      {/* petunjuk geser, hanya di layar kecil */}
+      {data.length > 3 && (
+        <p className="mt-2 text-center text-[11px] text-[#9AA49F] sm:hidden">
+          Geser grafik ke samping untuk melihat semua tahun
+        </p>
+      )}
     </div>
   );
 }
@@ -834,10 +844,10 @@ function DistributionChart({
     .join(", ")}.`;
 
   return (
-    <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8 xl:flex-col xl:gap-6 2xl:flex-row 2xl:gap-8">
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-8 xl:flex-col xl:gap-6 2xl:flex-row 2xl:gap-8">
       <svg
         viewBox="0 0 200 200"
-        className="h-[190px] w-[190px] shrink-0"
+        className="h-[170px] w-[170px] shrink-0 sm:h-[190px] sm:w-[190px]"
         role="img"
         aria-label={summary}
       >
@@ -876,11 +886,11 @@ function DistributionChart({
         </text>
       </svg>
 
-      <ul className="w-full">
+      <ul className="w-full min-w-0">
         {slices.map((s) => (
           <li
             key={s.name}
-            className="flex items-center justify-between gap-4 border-b border-dashed border-[#DCE4DE] py-2.5 last:border-b-0"
+            className="flex items-center justify-between gap-3 border-b border-dashed border-[#DCE4DE] py-2.5 last:border-b-0 sm:gap-4"
           >
             <span className="flex min-w-0 items-center gap-2.5">
               <span
@@ -909,6 +919,8 @@ function DistributionChart({
 /* =========================================================
    LATEST DATA
    Hanya menampilkan data dari 7 hari terakhir (LATEST_DAYS).
+   Di layar kecil tampil sebagai daftar kartu, di layar sedang ke
+   atas tampil sebagai tabel.
 ========================================================= */
 
 const thClass =
@@ -920,6 +932,8 @@ function LatestDataCard({ items }: { items: LatestData[] }) {
     isWithinLastDays(item.date, LATEST_DAYS)
   );
 
+  const emptyText = `Tidak ada data baru dalam ${LATEST_DAYS} hari terakhir.`;
+
   return (
     <Panel
       icon={<Table size={16} strokeWidth={1.8} />}
@@ -927,7 +941,53 @@ function LatestDataCard({ items }: { items: LatestData[] }) {
       description={`Data yang ditambahkan atau diperbarui dalam ${LATEST_DAYS} hari terakhir.`}
       flush
     >
-      <div className="w-full overflow-x-auto">
+      {/* MOBILE: daftar kartu */}
+
+      <ul className="space-y-2 p-2 sm:hidden">
+        {recentItems.length === 0 && (
+          <li className="px-3 py-8 text-center text-[13px] leading-5 text-[#8A948E]">
+            {emptyText}
+          </li>
+        )}
+
+        {recentItems.map((item, index) => (
+          <li
+            key={`${item.category}-${item.id}`}
+            className="flex items-start gap-3 rounded-2xl border border-[#EEF2EF] bg-white p-3"
+          >
+            <span className="mt-0.5 shrink-0 text-[12px] tabular-nums text-[#8A948E]">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 break-words text-[13px] font-medium leading-5 text-[#26352C]">
+                {item.title}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <CategoryChip name={item.category} />
+
+                <span className="whitespace-nowrap text-[11px] text-[#7A867F]">
+                  {formatShortDate(item.date)}
+                </span>
+              </div>
+            </div>
+
+            <Link
+              href={CATEGORY_LINKS[item.category] ?? "/admin/dashboard"}
+              aria-label={`Lihat data ${item.category}`}
+              title="Lihat"
+              className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#6F7B74] transition hover:bg-[#EEF3EF] hover:text-[#26352D]"
+            >
+              <Eye size={16} strokeWidth={1.8} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      {/* TABLET / DESKTOP: tabel */}
+
+      <div className="hidden w-full overflow-x-auto sm:block">
         <table className="w-full min-w-[640px] border-separate border-spacing-y-1 px-2 text-left">
           <thead>
             <tr>
@@ -956,7 +1016,7 @@ function LatestDataCard({ items }: { items: LatestData[] }) {
                   colSpan={5}
                   className="px-5 py-10 text-center text-[13px] text-[#8A948E]"
                 >
-                  Tidak ada data baru dalam {LATEST_DAYS} hari terakhir.
+                  {emptyText}
                 </td>
               </tr>
             )}
@@ -1032,7 +1092,7 @@ function CategoryChip({ name }: { name: CategoryName }) {
 
 function SystemInformation({ updatedAt }: { updatedAt: string | null }) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white/70 px-4 py-4 shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:flex-row sm:items-center sm:px-5">
+    <div className="flex flex-col gap-3 rounded-2xl bg-white/70 px-4 py-4 shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:flex-row sm:items-center sm:gap-4 sm:px-5">
       <div
         aria-hidden
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#2E7D32] shadow-[0_2px_10px_rgba(38,53,45,0.06)]"
@@ -1050,9 +1110,11 @@ function SystemInformation({ updatedAt }: { updatedAt: string | null }) {
         </p>
       </div>
 
-      <div className="shrink-0">
-        {updatedAt && <UpdatedAt date={updatedAt} />}
-      </div>
+      {updatedAt && (
+        <div className="sm:shrink-0">
+          <UpdatedAt date={updatedAt} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1060,7 +1122,7 @@ function SystemInformation({ updatedAt }: { updatedAt: string | null }) {
 /* Tanggal pembaruan data: "Diperbarui: 20 September 2026" */
 function UpdatedAt({ date }: { date: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#7A867F]">
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-[#7A867F]">
       <CalendarDays
         size={13}
         strokeWidth={1.8}

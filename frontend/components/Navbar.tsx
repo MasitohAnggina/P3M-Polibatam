@@ -244,6 +244,10 @@ function loadGoogleTranslate() {
 
 /* =========================================================
    KOMPONEN KECIL (dipakai ulang oleh Profil, HKI, Informasi)
+
+   Ukuran responsif:
+   - lg (1024-1279px) : padding dan huruf dipadatkan supaya muat
+   - xl (>= 1280px)   : ukuran penuh
 ========================================================= */
 
 /* link biasa di navbar desktop */
@@ -251,7 +255,7 @@ function DesktopLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`relative px-3 py-2 text-[13px] font-medium transition-colors ${
+      className={`relative whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors ${
         active ? "text-[#2E7D32]" : "text-[#4B554E] hover:text-[#2E7D32]"
       }`}
     >
@@ -306,7 +310,7 @@ function DesktopDropdown({
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`relative flex items-center gap-1 px-3 py-2 text-[13px] font-medium transition-colors hover:text-[#2E7D32] ${
+        className={`relative flex items-center gap-1 whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors hover:text-[#2E7D32] ${
           active || open ? "text-[#2E7D32]" : "text-[#4B554E]"
         }`}
       >
@@ -420,9 +424,10 @@ function MobileGroup({
 
 /* =========================================================
    NAVBAR
-   Menu desktop tampil mulai layar xl (1280px) supaya muat
-   dengan ukuran huruf yang lebih besar. Di bawah itu dipakai
-   tombol menu (hamburger).
+   Menu desktop tampil mulai lebar 1180px dengan SATU ukuran saja
+   (huruf 13px, padding px-3, search 150px, logo 38px), jadi tampilannya
+   sama di Chrome dan Edge. Kolom search boleh menyusut sedikit di
+   lebar 1180-1240px. Di bawah 1180px dipakai tombol menu (hamburger).
 ========================================================= */
 
 export default function Navbar() {
@@ -551,9 +556,9 @@ export default function Navbar() {
         </Link>
 
         {/* =====================================================
-            DESKTOP NAV
+            DESKTOP NAV (mulai lg / 1024px)
         ===================================================== */}
-        <nav ref={navRef} className="ml-auto hidden items-center gap-1 xl:flex">
+        <nav ref={navRef} className="ml-auto hidden items-center gap-1 pl-6 min-[1180px]:flex">
           {BEFORE_PROFIL.map((item) => (
             <DesktopLink key={item.href} item={item} active={pathname === item.href} />
           ))}
@@ -621,6 +626,8 @@ export default function Navbar() {
             </button>
 
             <input
+              id="cari-desktop"
+              name="q"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -628,14 +635,17 @@ export default function Navbar() {
               aria-label="Cari"
               autoComplete="off"
               enterKeyHint="search"
-              className="w-full bg-transparent text-[12px] text-[#465049] outline-none placeholder:text-[#9BA39D]"
+              className="w-full min-w-0 bg-transparent text-[12px] text-[#465049] outline-none placeholder:text-[#9BA39D]"
             />
           </form>
 
           {/* ===================================================
               LANGUAGE DROPDOWN
           =================================================== */}
-          <div className="relative ml-3" translate="no">
+          <div
+            className="relative ml-3"
+            translate="no"
+          >
             <button
               type="button"
               onClick={() => {
@@ -693,12 +703,12 @@ export default function Navbar() {
         </nav>
 
         {/* =====================================================
-            MOBILE BUTTON
+            MOBILE BUTTON (di bawah lg / 1024px)
         ===================================================== */}
         <button
           type="button"
           onClick={() => setMobileOpen((prev) => !prev)}
-          className="ml-auto flex h-10 w-10 items-center justify-center border border-[#DDE3DE] text-[#39433D] xl:hidden"
+          className="ml-auto flex h-10 w-10 items-center justify-center border border-[#DDE3DE] text-[#39433D] min-[1180px]:hidden"
           aria-label={mobileOpen ? "Tutup menu" : "Buka menu"}
           aria-expanded={mobileOpen}
         >
@@ -710,7 +720,7 @@ export default function Navbar() {
           MOBILE MENU
       ===================================================== */}
       {mobileOpen && (
-        <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-[#E5E7E5] bg-white px-5 py-5 xl:hidden">
+        <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-[#E5E7E5] bg-white px-5 py-5 min-[1180px]:hidden">
           <nav className="flex flex-col">
             {BEFORE_PROFIL.map((item) => (
               <MobileLink
@@ -784,6 +794,8 @@ export default function Navbar() {
               </button>
 
               <input
+                id="cari-mobile"
+                name="q"
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
