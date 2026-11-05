@@ -641,7 +641,7 @@ export default function StrukturOrganisasiPage() {
                   type="text"
                   value={form.position}
                   onChange={(e) => updateForm("position", e.target.value)}
-                  placeholder="Contoh: Ketua P2M"
+                  placeholder="Contoh: Ketua P3M"
                   className={inputClass}
                 />
               </FormField>

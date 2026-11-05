@@ -10,21 +10,25 @@ return new class extends Migration
     {
         Schema::create('peneliti', function (Blueprint $table) {
             $table->id();
+
+            // Yang ditampilkan di halaman publik: foto, nama, prodi, tautan SINTA
             $table->string('nama');
-            $table->string('jabatan', 100);
+            $table->string('prodi', 150);
+            $table->string('foto', 500)->nullable();
+            $table->json('tautan')->nullable();     // [{label, url}] (tautan SINTA)
+
+            // Tidak lagi diisi dari form admin, jadi boleh kosong
+            $table->string('jabatan', 100)->nullable();
+            $table->string('jurusan', 150)->nullable();
+            $table->string('laboratorium')->nullable();
             $table->string('nidn', 30)->nullable();
             $table->string('email')->nullable();
-            $table->string('jurusan', 150);
-            $table->string('prodi', 150);
-            $table->string('laboratorium')->nullable();
-            $table->string('foto', 500)->nullable();
             $table->text('tentang')->nullable();
 
-            // Daftar dinamis disimpan sebagai JSON
+            // Daftar dinamis disimpan sebagai JSON (data lama, tidak ditampilkan)
             $table->json('keahlian')->nullable();   // ["Machine Learning", ...]
             $table->json('pendidikan')->nullable(); // [{jenjang, bidang, institusi, tahun}]
             $table->json('luaran')->nullable();     // [{judul, penulis, penerbit, tahun, jenis}]
-            $table->json('tautan')->nullable();     // [{label, url}]
 
             $table->timestamps();
 

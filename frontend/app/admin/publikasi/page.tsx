@@ -142,6 +142,8 @@ const ALL_CATEGORIES = "Semua Kategori";
 const publicationCategories = [
   "Jurnal Internasional bereputasi",
   "Jurnal Nasional",
+  "Seminar Internasional",
+  "Seminar Nasional",
   "E-Book",
   "Prosiding",
 ];

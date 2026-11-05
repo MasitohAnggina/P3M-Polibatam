@@ -56,7 +56,7 @@ const poppins = Poppins({
    latar lembut : #F6F9F3
 
    SKALA FONT (Poppins)
-   hero judul   : 30 / 38 / 44 / 50
+   hero judul   : 34 / 44 / 54 / 60
    judul seksi  : 26 / 30 / 34
    judul kartu  : 17-18
    isi          : 13.5-14 (leading 1.75)
@@ -67,6 +67,12 @@ const poppins = Poppins({
    kolom mulai lebar 860px, bukan 1024px (lg). Jadi jendela browser
    yang tidak penuh atau layar laptop dengan scaling tinggi tetap
    mendapat susunan kolom yang sama dengan layar lebar.
+
+   NAVBAR
+   Navbar (Navbar.tsx) setinggi 72px. Di beranda navbar transparan
+   di atas hero, jadi <main> diberi -mt-[72px] dan hero diberi
+   pt-[72px] supaya gradasi hero tampil di belakang navbar. Kalau
+   tinggi navbar diubah, ubah kedua angka 72px itu juga.
 ========================================================= */
 
 /* =========================================================
@@ -124,7 +130,7 @@ const services: Service[] = [
   {
     title: "Informasi",
     description:
-      "Pusat berita, pengumuman, panduan, dan agenda kegiatan terbaru P2M Politeknik Negeri Batam.",
+      "Pusat berita, pengumuman, panduan, dan agenda kegiatan terbaru P3M Politeknik Negeri Batam.",
     href: "/informasi",
     icon: Newspaper,
   },
@@ -252,11 +258,15 @@ const NEWS_LIMIT = 6;
 /* jumlah berita yang tampil di daftar samping */
 const NEWS_PER_PAGE = 4;
 
+/* Akses Cepat. Urutan tampil mengikuti urutan array ini:
+   SINTA, BIMA, Hiliriset, SEMESTA, PDKI, SISTER.
+   SINTA mengarah ke profil afiliasi Politeknik Negeri Batam
+   (ID afiliasi 564, kode PT 005029). */
 const quickLinks = [
   {
     name: "SINTA",
     desc: "Science & Technology Index",
-    href: "https://sinta.kemdiktisaintek.go.id/",
+    href: "https://sinta.kemdiktisaintek.go.id/affiliations/profile/564",
   },
   {
     name: "BIMA",
@@ -264,56 +274,57 @@ const quickLinks = [
     href: "https://bima.kemdiktisaintek.go.id/",
   },
   {
-    name: "Google Scholar",
-    desc: "Pencarian karya ilmiah",
-    href: "https://scholar.google.com/",
+    name: "HILIRISET",
+    desc: "Hilirisasi Riset Prioritas",
+    href: "https://hiliriset.kemdiktisaintek.go.id/",
   },
   {
-    name: "Garuda",
-    desc: "Portal jurnal Indonesia",
-    href: "https://garuda.kemdiktisaintek.go.id/",
+    name: "SEMESTA",
+    desc: "Pendanaan Sains & Teknologi",
+    href: "https://semesta.kemdiktisaintek.go.id/",
   },
   {
-    name: "Scopus",
-    desc: "Abstract & Citation",
-    href: "https://www.scopus.com/",
+    name: "PDKI",
+    desc: "Pangkalan Data Kekayaan Intelektual",
+    href: "https://pdki-indonesia.dgip.go.id/",
   },
-  {
-    name: "SISTER",
-    desc: "Sistem Informasi SDM",
-    href: "https://sister.kemdiktisaintek.go.id/",
+    {
+  name: "GARUDA",
+  desc: "Garba Rujukan Digital",
+  href: "https://garuda.kemdiktisaintek.go.id/",
   },
 ];
 
 /* =========================================================
-   HERO SLIDES
+   HERO
+   Satu tampilan saja (tanpa slide, tanpa gambar, tanpa ikon),
+   isi rata tengah dengan latar gradasi hijau.
+
+   ANIMASI HERO (tidak bergerak terus-menerus)
+   - saat halaman dibuka: judul muncul kata demi kata, lalu teks
+     dan tombol menyusul
+   - saat di-scroll ke bawah: isi hero bergeser turun pelan sambil
+     memudar (lihat useHeroScroll). Berhenti bergerak saat scroll
+     berhenti.
+   Semuanya otomatis mati bila pengguna memilih "kurangi animasi".
 ========================================================= */
 
-const heroSlides = [
-  {
-    image: "/img/poltek.jpeg",
-    eyebrow: "Politeknik Negeri Batam",
-    title: "Mendorong Riset, Inovasi, dan Dampak Nyata.",
-    description:
-      "Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik Negeri Batam mendukung pengembangan penelitian, inovasi, dan pengabdian kepada masyarakat.",
-  },
-  {
-    image: "/img/poltek2.jpeg",
-    eyebrow: "Penelitian & Inovasi",
-    title: "Mengembangkan Riset untuk Masa Depan.",
-    description:
-      "Mendorong sivitas akademika untuk menghasilkan penelitian yang inovatif, relevan, dan memberikan kontribusi bagi perkembangan ilmu pengetahuan.",
-  },
-  {
-    image: "/img/Hero3.jpg",
-    eyebrow: "Pengabdian kepada Masyarakat",
-    title: "Menghubungkan Inovasi dengan Masyarakat.",
-    description:
-      "Mengembangkan berbagai program pengabdian yang menghubungkan hasil penelitian dan inovasi dengan kebutuhan masyarakat.",
-  },
-];
+const HERO = {
+  eyebrow: "P3M Politeknik Negeri Batam",
+  title: "Mendorong Riset, Inovasi, dan Dampak Nyata.",
+  description:
+    "Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik Negeri Batam mendukung pengembangan penelitian, inovasi, dan pengabdian kepada masyarakat.",
+};
 
-const HERO_INTERVAL = 6000;
+/* gradasi hero: halus dan satu arah, hijau tua di kiri atas makin
+   terang ke kanan bawah. Lapisan kedua hanya menggelapkan bagian atas
+   sedikit (juga gradasi lurus, bukan bercak) supaya teks putih navbar
+   tetap terbaca. Terlihat penuh sejak halaman dibuka. */
+const HERO_GRADIENT = [
+  "linear-gradient(180deg, rgba(10,28,5,0.35) 0%, rgba(10,28,5,0) 45%)",
+  "linear-gradient(135deg,#1B4010 0%,#2F5F1F 38%,#4C8E32 72%,#78B35A 100%)",
+].join(", ");
+
 const NEWS_INTERVAL = 6000;
 
 /* =========================================================
@@ -370,6 +381,51 @@ function usePrefersReducedMotion() {
   }, []);
 
   return reduce;
+}
+
+/* Animasi hero yang mengikuti scroll.
+   Mengisi variabel CSS --p (0 = hero di posisi awal, 1 = hero sudah
+   terscroll habis) pada elemen hero. Nilainya langsung ditulis ke DOM
+   (bukan state), jadi halaman tidak dirender ulang tiap scroll. */
+function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (disabled) {
+      el.style.removeProperty("--p");
+      return;
+    }
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      const progress = Math.min(
+        Math.max(window.scrollY / Math.max(el.offsetHeight, 1), 0),
+        1
+      );
+      el.style.setProperty("--p", progress.toFixed(3));
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [disabled]);
+
+  return ref;
 }
 
 /* =========================================================
@@ -643,10 +699,7 @@ function ServiceCard({ service }: { service: Service }) {
 
 export default function HomePage() {
   const reduceMotion = usePrefersReducedMotion();
-
-  /* HERO */
-  const [activeHero, setActiveHero] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const heroRef = useHeroScroll<HTMLElement>(reduceMotion);
 
   /* DATA INFORMASI (dari API): berita, pengumuman, dan agenda */
   const [entries, setEntries] = useState<NewsItem[]>([]);
@@ -764,18 +817,6 @@ export default function HomePage() {
     };
   }, []);
 
-  /* AUTO SLIDE HERO (berhenti saat kursor di atas hero
-     atau saat pengguna memilih animasi dikurangi) */
-  useEffect(() => {
-    if (paused || reduceMotion) return;
-
-    const timer = setTimeout(() => {
-      setActiveHero((current) => (current + 1) % heroSlides.length);
-    }, HERO_INTERVAL);
-
-    return () => clearTimeout(timer);
-  }, [paused, reduceMotion, activeHero]);
-
   /* AUTO SLIDE BERITA (berhenti saat kursor di area berita
      atau saat pengguna memilih animasi dikurangi) */
   useEffect(() => {
@@ -788,16 +829,6 @@ export default function HomePage() {
 
     return () => clearTimeout(timer);
   }, [newsPaused, reduceMotion, activeNews, newsCount]);
-
-  const previousHero = () => {
-    setActiveHero(
-      (current) => (current - 1 + heroSlides.length) % heroSlides.length
-    );
-  };
-
-  const nextHero = () => {
-    setActiveHero((current) => (current + 1) % heroSlides.length);
-  };
 
   const changeNewsTab = (tab: NewsTab) => {
     setNewsTab(tab);
@@ -823,155 +854,70 @@ export default function HomePage() {
     setClickedNews(globalIndex);
   };
 
-  const currentHero = heroSlides[activeHero];
   const featuredNews = filteredNews[safeActiveNews];
 
   return (
     <main
-      className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+      className={`${poppins.className} -mt-[72px] overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
       <ScrollProgress />
 
       {/* =====================================================
           HERO
+          sederhana: rata tengah, gradasi hijau, tanpa gambar dan ikon.
+          pt-[72px] = tinggi navbar (main digeser naik 72px supaya
+          hero ada di belakang navbar yang transparan)
       ===================================================== */}
 
       <section
-        className="relative min-h-[540px] overflow-hidden bg-[#31551F] text-white md:min-h-[600px]"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
+        ref={heroRef}
+        className="hero-bg relative overflow-hidden pt-[72px] text-white"
+        style={{ backgroundImage: HERO_GRADIENT }}
       >
-        {/* GAMBAR */}
-        <div className="absolute inset-0">
-          {heroSlides.map((slide, index) => (
-            <Image
-              key={slide.image}
-              src={slide.image}
-              alt={slide.eyebrow}
-              aria-hidden={activeHero !== index}
-              fill
-              priority={index === 0}
-              quality={90}
-              sizes="100vw"
-              className={`object-cover object-center transition-opacity duration-[1400ms] ease-out motion-reduce:transition-none ${
-                activeHero === index ? "hero-zoom opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
+        <div className="hero-content relative z-10 mx-auto flex min-h-[540px] max-w-[1120px] flex-col items-center justify-center px-5 pb-20 pt-12 text-center md:min-h-[600px] md:px-7">
+          <p
+            className="timbul mb-5 text-[12px] font-medium uppercase tracking-[0.18em] text-white/75"
+            style={delayStyle(0)}
+          >
+            {HERO.eyebrow}
+          </p>
 
-          {/* Overlay hijau supaya teks jelas dan gambar tetap terlihat */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#213B14]/85 via-[#31551F]/40 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#213B14]/50 via-transparent to-transparent" />
-        </div>
+          {/* judul muncul kata demi kata */}
+          <h1 className="max-w-[780px] text-[32px] font-medium leading-[1.25] tracking-[-0.02em] [text-wrap:balance] sm:text-[40px] md:text-[48px]">
+            {HERO.title.split(" ").map((word, index) => (
+              <span key={`${word}-${index}`}>
+                <span className="kata" style={delayStyle(120 + index * 80)}>
+                  {word}
+                </span>{" "}
+              </span>
+            ))}
+          </h1>
 
-        {/* TOMBOL KIRI */}
-        <button
-          type="button"
-          onClick={previousHero}
-          aria-label="Slide sebelumnya"
-          className="group absolute left-4 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-white/10 text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:left-6"
-        >
-          <ArrowLeft
-            size={18}
-            strokeWidth={1.8}
-            className="transition-transform duration-300 group-hover:-translate-x-0.5"
-          />
-        </button>
+          <p
+            className="timbul mt-6 max-w-[800px] text-[14px] leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+            style={delayStyle(620)}
+          >
+            {HERO.description}
+          </p>
 
-        {/* TOMBOL KANAN */}
-        <button
-          type="button"
-          onClick={nextHero}
-          aria-label="Slide berikutnya"
-          className="group absolute right-4 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-white/10 text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-6"
-        >
-          <ArrowRight
-            size={18}
-            strokeWidth={1.8}
-            className="transition-transform duration-300 group-hover:translate-x-0.5"
-          />
-        </button>
-
-        {/* KONTEN HERO */}
-        <div className="relative z-10 mx-auto flex min-h-[540px] max-w-[1120px] items-center px-16 pb-24 pt-16 sm:px-20 md:min-h-[600px] md:px-24 lg:px-20">
-          <div key={activeHero} className="max-w-[680px]">
-            <p
-              className="timbul mb-4 text-[13px] font-semibold tracking-[0.01em] text-[#DDEFD2]"
-              style={delayStyle(0)}
+          <div
+            className="timbul mt-10 flex flex-wrap items-center justify-center gap-3"
+            style={delayStyle(760)}
+          >
+            <Link
+              href="/profil"
+              className="inline-flex items-center rounded-md bg-white px-8 py-3 text-[13.5px] font-semibold text-[#31551F] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              {currentHero.eyebrow}
-            </p>
+              Profil Selengkapnya
+            </Link>
 
-            <h1
-              className="timbul max-w-[660px] text-[30px] font-bold leading-[1.18] tracking-[-0.02em] [text-shadow:0_2px_18px_rgba(20,36,12,0.35)] sm:text-[38px] md:text-[44px] lg:text-[50px]"
-              style={delayStyle(120)}
+            <a
+              href="#layanan"
+              className="inline-flex items-center rounded-md border border-white/60 px-8 py-3 text-[13.5px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              {currentHero.title}
-            </h1>
-
-            <p
-              className="timbul mt-5 max-w-[560px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_10px_rgba(20,36,12,0.35)] sm:text-[15px]"
-              style={delayStyle(240)}
-            >
-              {currentHero.description}
-            </p>
-
-            <div
-              className="timbul mt-8 flex flex-wrap items-center gap-3"
-              style={delayStyle(360)}
-            >
-              <Link
-                href="/profil"
-                className="group inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-[13px] font-semibold text-[#31551F] shadow-lg shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Profil Selengkapnya
-                <ArrowRight
-                  size={15}
-                  strokeWidth={2}
-                  className="transition-transform duration-300 group-hover:translate-x-1"
-                />
-              </Link>
-
-              <a
-                href="#layanan"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-6 py-3.5 text-[13px] font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Lihat Layanan
-              </a>
-            </div>
+              Lihat Layanan
+            </a>
           </div>
-        </div>
-
-        {/* INDIKATOR SLIDE (aktif = progress bar) */}
-        <div className="absolute bottom-9 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
-          {heroSlides.map((slide, index) => {
-            const isActive = activeHero === index;
-
-            return (
-              <button
-                key={slide.image}
-                type="button"
-                onClick={() => setActiveHero(index)}
-                aria-label={`Slide ${index + 1}`}
-                aria-current={isActive}
-                className={`relative h-1.5 overflow-hidden rounded-full transition-all duration-500 ${
-                  isActive
-                    ? "w-10 bg-white/35"
-                    : "w-1.5 bg-white/55 hover:bg-white/90"
-                }`}
-              >
-                {isActive &&
-                  (paused || reduceMotion ? (
-                    <span className="absolute inset-0 bg-white" />
-                  ) : (
-                    <span
-                      key={`${activeHero}-progress`}
-                      className="hero-progress absolute inset-y-0 left-0 w-full bg-white"
-                    />
-                  ))}
-              </button>
-            );
-          })}
         </div>
       </section>
 
@@ -981,11 +927,11 @@ export default function HomePage() {
           3 kolom (>= 860px)
       ===================================================== */}
 
-      <section id="layanan" className="scroll-mt-20 bg-white py-20 md:py-28">
+      <section id="layanan" className="scroll-mt-24 bg-white py-20 md:py-28">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             title="Layanan Utama"
-            description="Layanan P2M Polibatam untuk mendukung penelitian, pengabdian, publikasi, jurnal ilmiah, pengelolaan kekayaan intelektual, dan informasi kegiatan."
+            description="Layanan P3M Polibatam untuk mendukung penelitian, pengabdian, publikasi, jurnal ilmiah, pengelolaan kekayaan intelektual, dan informasi kegiatan."
           />
 
           {/* Grid otomatis: kolom selebar minimal 280px, sisanya dibagi rata.
@@ -1081,7 +1027,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-2 max-w-[520px] text-[14px] leading-[1.75] text-[#5E6B58]">
                 Informasi terbaru mengenai kegiatan, program, dan perkembangan
-                P2M Politeknik Negeri Batam.
+                P3M Politeknik Negeri Batam.
               </p>
             </div>
 
@@ -1370,7 +1316,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             title="Pengumuman & Agenda"
-            description="Pengumuman resmi dan agenda kegiatan terbaru dari P2M Politeknik Negeri Batam."
+            description="Pengumuman resmi dan agenda kegiatan terbaru dari P3M Politeknik Negeri Batam."
           />
 
           <div className="flex flex-col gap-6 lg:gap-8">
@@ -1509,6 +1455,7 @@ export default function HomePage() {
       {/* =====================================================
           AKSES CEPAT
           grid: 1 kolom, 2 kolom (>= 640px), 3 kolom (>= 860px)
+          6 tautan = 2 baris x 3 kolom di layar lebar
       ===================================================== */}
 
       <section className="bg-[#F6F9F3] py-20 md:py-28">
@@ -1518,7 +1465,7 @@ export default function HomePage() {
             description="Tautan ke platform penelitian dan publikasi yang sering digunakan sivitas akademika."
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 min-[860px]:grid-cols-3">
+          <div className="grid grid-flow-col grid-rows-3 grid-cols-2 gap-4">
             {quickLinks.map((link, index) => (
               <Reveal key={link.name} delay={(index % 3) * 90}>
                 <a
@@ -1565,7 +1512,8 @@ export default function HomePage() {
           font-size: 16px;
         }
 
-        /* animasi "timbul": muncul dari bawah saat konten slide berganti */
+        /* animasi "timbul": muncul dari bawah (hero saat halaman dibuka,
+           berita saat berita berganti) */
         .timbul {
           animation: timbul 650ms cubic-bezier(.22,1,.36,1) both;
           animation-delay: var(--d, 0ms);
@@ -1582,25 +1530,34 @@ export default function HomePage() {
           }
         }
 
-        /* gambar hero zoom pelan */
-        .hero-zoom {
-          animation: heroZoom 9s ease-out both;
+        /* judul hero: tiap kata naik sambil menajam */
+        .kata {
+          display: inline-block;
+          animation: kata 750ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
         }
 
-        @keyframes heroZoom {
-          from { transform: scale(1.1); }
-          to   { transform: scale(1); }
+        @keyframes kata {
+          from {
+            opacity: 0;
+            transform: translateY(0.45em);
+            filter: blur(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
         }
 
-        /* progress indikator slide hero */
-        .hero-progress {
-          transform-origin: left;
-          animation: heroProgress ${HERO_INTERVAL}ms linear forwards;
-        }
-
-        @keyframes heroProgress {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
+        /* ANIMASI HERO SAAT SCROLL
+           --p = 0 (awal) sampai 1 (hero terscroll habis), diisi oleh
+           useHeroScroll. Tanpa animasi berulang: kalau scroll berhenti,
+           semuanya diam. */
+        .hero-content {
+          transform: translate3d(0, calc(var(--p, 0) * 70px), 0);
+          opacity: max(0, calc(1 - var(--p, 0) * 1.25));
+          will-change: transform, opacity;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1609,9 +1566,13 @@ export default function HomePage() {
           }
 
           .timbul,
-          .hero-zoom,
-          .hero-progress {
+          .kata {
             animation: none;
+          }
+
+          .hero-content {
+            transform: none;
+            opacity: 1;
           }
         }
       `}</style>

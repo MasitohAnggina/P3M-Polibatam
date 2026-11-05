@@ -11,11 +11,13 @@ class Publikasi extends Model
 
     /** Harus sama dengan pilihan kategori di frontend (admin & publik). */
     public const KATEGORI = [
-        'Jurnal Internasional bereputasi',
-        'Jurnal Nasional',
-        'E-Book',
-        'Prosiding',
-    ];
+    'Jurnal Internasional bereputasi',
+    'Jurnal Nasional',
+    'Seminar Internasional',
+    'Seminar Nasional',
+    'E-Book',
+    'Prosiding',
+];
 
     protected $fillable = [
         'slug',

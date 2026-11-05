@@ -1,10 +1,6 @@
 "use client";
 
-import type {
-  ChangeEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  ReactNode,
-} from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Poppins } from "next/font/google";
 
@@ -29,25 +25,33 @@ import {
    (sesuaikan dengan struktur folder admin Anda).
 
    Data ini tampil di halaman publik /profil-peneliti
-   (daftar kartu + halaman detail).
+   (daftar kartu). Klik kartu di halaman publik membuka
+   Tautan Profil (SINTA) di tab baru. Karena itu form hanya
+   berisi: foto, nama, program studi, dan tautan profil SINTA.
 
-   KONTRAK API (backend Laravel, Sanctum):
+   URUTAN DATA: dari yang terbaru ditambahkan ke yang terlama
+   (id terbesar di atas). Peneliti yang baru disimpan langsung
+   muncul di halaman 1.
+
+   PAGINATION: nomor halaman, tombol sebelumnya/berikutnya, dan
+   pilihan jumlah data per halaman (10, 25, 50).
+
+   KONTRAK API (backend Laravel, Sanctum) TIDAK BERUBAH:
    GET    /api/admin/peneliti          -> { data: ApiResearcher[] }
    POST   /api/admin/peneliti          -> { data: ApiResearcher }  (multipart)
    POST   /api/admin/peneliti/{id}     -> { data: ApiResearcher }  (multipart + _method=PUT)
    DELETE /api/admin/peneliti/{id}     -> { message }
    Publik: GET /api/peneliti           -> { data: ApiResearcher[] }
 
-   Field multipart yang dikirim saat simpan:
-   nama, jabatan, nidn, email, jurusan, prodi, laboratorium, tentang,
-   foto (file, opsional), hapus_foto (1 = hapus foto lama, hanya saat edit),
-   keahlian[]                         -> array string
-   pendidikan[i][jenjang|bidang|institusi|tahun]
-   luaran[i][judul|penulis|penerbit|tahun|jenis]
-   tautan[i][label|url]
-   Saat edit, array dikirim LENGKAP (bukan selisih), jadi backend
-   cukup mengganti isi lama dengan isi baru. Array yang tidak
-   terkirim (semua barisnya dihapus) dianggap kosong oleh backend.
+   CATATAN BACKEND: jabatan, jurusan, dan laboratorium tidak
+   diisi lagi dari form (dikirim kosong untuk data baru), jadi
+   aturan validasi `jabatan` dan `jurusan` di Laravel harus
+   `nullable` (kolom database juga harus boleh NULL).
+
+   Data lama (jabatan, jurusan, laboratorium, keahlian, tentang,
+   pendidikan, luaran, NIDN, email, tautan lain) tidak
+   ditampilkan di form, tetapi tetap dikirim ulang apa adanya
+   saat edit supaya tidak terhapus di server.
 ========================================================= */
 
 const poppins = Poppins({
@@ -124,7 +128,10 @@ function photoUrl(path: string | null): string {
 }
 
 /* =========================================================
-   TYPE (bentuk di frontend sama dengan halaman publik)
+   TYPE
+   Yang tampil dan diedit: name, prodi, photo, tautan SINTA.
+   Field lainnya hanya dibawa supaya data lama tidak hilang
+   saat disimpan ulang.
 ========================================================= */
 
 type Education = { degree: string; field: string; school: string; year: string };
@@ -142,28 +149,29 @@ type ProfileLink = { label: string; href: string };
 type Researcher = {
   id: number;
   name: string;
+  prodi: string;
+  photo: string;
+  links: ProfileLink[];
+  /* data lama, tidak ditampilkan */
   position: string;
+  jurusan: string;
+  lab: string;
   nidn: string;
   email: string;
-  jurusan: string;
-  prodi: string;
-  lab: string;
-  photo: string;
   about: string;
   expertise: string[];
   education: Education[];
   publications: Publication[];
-  links: ProfileLink[];
 };
 
 /* Bentuk data dari API Laravel */
 type ApiResearcher = {
   id: number;
   nama: string;
-  jabatan: string;
+  jabatan: string | null;
   nidn: string | null;
   email: string | null;
-  jurusan: string;
+  jurusan: string | null;
   prodi: string;
   laboratorium: string | null;
   foto: string | null;
@@ -193,13 +201,14 @@ function fromApi(item: ApiResearcher): Researcher {
   return {
     id: item.id,
     name: item.nama,
-    position: item.jabatan,
+    prodi: item.prodi,
+    photo: photoUrl(item.foto),
+    links: (item.tautan ?? []).map((row) => ({ label: row.label, href: row.url })),
+    position: item.jabatan ?? "",
+    jurusan: item.jurusan ?? "",
+    lab: item.laboratorium ?? "",
     nidn: item.nidn ?? "",
     email: item.email ?? "",
-    jurusan: item.jurusan,
-    prodi: item.prodi,
-    lab: item.laboratorium ?? "",
-    photo: photoUrl(item.foto),
     about: item.tentang ?? "",
     expertise: item.keahlian ?? [],
     education: (item.pendidikan ?? []).map((row) => ({
@@ -208,17 +217,13 @@ function fromApi(item: ApiResearcher): Researcher {
       school: row.institusi,
       year: row.tahun == null ? "" : String(row.tahun),
     })),
-    // terbaru di atas, sama dengan halaman publik
-    publications: (item.luaran ?? [])
-      .map((row) => ({
-        title: row.judul,
-        authors: row.penulis ?? "",
-        venue: row.penerbit ?? "",
-        year: row.tahun == null ? "" : String(row.tahun),
-        type: row.jenis ?? "",
-      }))
-      .sort((a, b) => Number(b.year || 0) - Number(a.year || 0)),
-    links: (item.tautan ?? []).map((row) => ({ label: row.label, href: row.url })),
+    publications: (item.luaran ?? []).map((row) => ({
+      title: row.judul,
+      authors: row.penulis ?? "",
+      venue: row.penerbit ?? "",
+      year: row.tahun == null ? "" : String(row.tahun),
+      type: row.jenis ?? "",
+    })),
   };
 }
 
@@ -227,53 +232,26 @@ type ModalType = "add" | "edit" | "detail" | "delete" | null;
 const emptyForm: Researcher = {
   id: 0,
   name: "",
+  prodi: "",
+  photo: "",
+  links: [],
   position: "",
+  jurusan: "",
+  lab: "",
   nidn: "",
   email: "",
-  jurusan: "",
-  prodi: "",
-  lab: "",
-  photo: "",
   about: "",
   expertise: [],
   education: [],
   publications: [],
-  links: [],
 };
-
-const emptyEducation: Education = { degree: "", field: "", school: "", year: "" };
-const emptyPublication: Publication = {
-  title: "",
-  authors: "",
-  venue: "",
-  year: "",
-  type: "Artikel Jurnal",
-};
-const emptyLink: ProfileLink = { label: "", href: "" };
 
 /* =========================================================
    KONSTANTA
 ========================================================= */
 
-const POSITIONS = ["Asisten Ahli", "Lektor", "Lektor Kepala", "Guru Besar"];
-const DEGREES = [
-  "Doktor (S3)",
-  "Magister (S2)",
-  "Sarjana (S1)",
-  "Diploma (D4)",
-  "Diploma (D3)",
-];
-const PUBLICATION_TYPES = ["Artikel Jurnal", "Prosiding", "HKI", "Buku"];
-const DEFAULT_JURUSAN = [
-  "Teknik Informatika",
-  "Teknik Elektro",
-  "Teknik Mesin",
-  "Manajemen Bisnis",
-];
-const LINK_SUGGESTIONS = ["Scopus", "SINTA", "Google Scholar", "ORCID"];
-
-const ALL_JURUSAN = "Semua Jurusan";
-const PAGE_SIZE = 10;
+const SINTA_LABEL = "SINTA";
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 /* =========================================================
    STYLE BERSAMA
@@ -281,9 +259,6 @@ const PAGE_SIZE = 10;
 
 const inputClass =
   "h-10 w-full rounded-xl border border-[#D9E2D3] bg-white px-3.5 text-[13px] text-[#1F2A1A] outline-none transition placeholder:text-[#A3ADA7] focus:border-[#31551F] focus:ring-4 focus:ring-[#31551F]/10";
-
-const textareaClass =
-  "min-h-[110px] w-full resize-y rounded-xl border border-[#D9E2D3] bg-white px-3.5 py-2.5 text-[13px] leading-6 text-[#1F2A1A] outline-none transition placeholder:text-[#A3ADA7] focus:border-[#31551F] focus:ring-4 focus:ring-[#31551F]/10";
 
 const btnPrimary =
   "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#31551F] px-5 text-[13px] font-medium text-white transition hover:bg-[#3F6B28] disabled:cursor-not-allowed disabled:opacity-40";
@@ -312,14 +287,36 @@ const revokeIfBlob = (url: string) => {
   if (isBlob(url)) URL.revokeObjectURL(url);
 };
 
-function patchRow<T>(list: T[], index: number, patch: Partial<T>): T[] {
-  return list.map((row, i) => (i === index ? { ...row, ...patch } : row));
+/* Tautan SINTA = tautan yang namanya mengandung "sinta" */
+const isSintaLink = (link: ProfileLink) => /sinta/i.test(link.label);
+
+function getSintaUrl(links: ProfileLink[]): string {
+  return links.find(isSintaLink)?.href ?? "";
 }
 
-/* nama tanpa gelar, mis. "Dr. Rina Marlina, S.Kom." -> "Rina Marlina"
-   (dipakai untuk mengurutkan, sama dengan halaman publik) */
-function coreName(name: string) {
-  return name.replace(/^(Dr\.|Prof\.|Ir\.)\s*/i, "").split(",")[0].trim();
+/* ID SINTA ada di URL profil: .../authors/profile/6808685 */
+function getSintaId(links: ProfileLink[]): string {
+  return getSintaUrl(links).match(/\/authors\/profile\/(\d+)/i)?.[1] ?? "";
+}
+
+/* Daftar nomor halaman dengan "…", contoh: 1 … 4 5 6 … 12 */
+function pageList(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const nums = Array.from(
+    new Set([1, total, current - 1, current, current + 1])
+  )
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b);
+
+  const out: (number | "…")[] = [];
+
+  nums.forEach((n, i) => {
+    if (i > 0 && n - nums[i - 1] > 1) out.push("…");
+    out.push(n);
+  });
+
+  return out;
 }
 
 /* Buang baris kosong sebelum divalidasi dan dikirim */
@@ -337,27 +334,7 @@ function cleanForm(form: Researcher) {
 
 /* Mengembalikan pesan error pertama, atau "" kalau semua valid */
 function validateForm(form: Researcher): string {
-  const { education, publications, links } = cleanForm(form);
-
-  if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-    return "Format email tidak valid.";
-  }
-
-  for (const row of education) {
-    if (!row.degree.trim() || !row.school.trim()) {
-      return "Pendidikan: jenjang dan institusi wajib diisi.";
-    }
-    if (row.year.trim() && !/^\d{4}$/.test(row.year.trim())) {
-      return "Pendidikan: tahun harus 4 digit angka, contoh 2021.";
-    }
-  }
-
-  for (const row of publications) {
-    if (!row.title.trim()) return "Luaran penelitian: judul wajib diisi.";
-    if (row.year.trim() && !/^\d{4}$/.test(row.year.trim())) {
-      return "Luaran penelitian: tahun harus 4 digit angka, contoh 2024.";
-    }
-  }
+  const { links } = cleanForm(form);
 
   for (const row of links) {
     if (!row.label.trim() || !row.href.trim()) {
@@ -381,12 +358,14 @@ function buildBody(
   const body = new FormData();
 
   body.append("nama", form.name.trim());
+  body.append("prodi", form.prodi.trim());
+
+  /* data lama: dikirim ulang apa adanya (kosong untuk data baru) */
   body.append("jabatan", form.position.trim());
+  body.append("jurusan", form.jurusan.trim());
+  body.append("laboratorium", form.lab.trim());
   body.append("nidn", form.nidn.trim());
   body.append("email", form.email.trim());
-  body.append("jurusan", form.jurusan.trim());
-  body.append("prodi", form.prodi.trim());
-  body.append("laboratorium", form.lab.trim());
   body.append("tentang", form.about.trim());
 
   form.expertise.forEach((tag) => body.append("keahlian[]", tag));
@@ -430,8 +409,8 @@ export default function ProfilPenelitiAdminPage() {
   const [pageError, setPageError] = useState("");
 
   const [search, setSearch] = useState("");
-  const [jurusanFilter, setJurusanFilter] = useState(ALL_JURUSAN);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
   const [modal, setModal] = useState<ModalType>(null);
   const [form, setForm] = useState<Researcher>(emptyForm);
@@ -484,44 +463,17 @@ export default function ProfilPenelitiAdminPage() {
   }, []);
 
   /* =========================================================
-     OPSI (diambil dari data yang sudah ada)
+     OPSI PRODI (diambil dari data yang sudah ada)
   ========================================================= */
-
-  const jurusanOptions = useMemo(
-    () =>
-      Array.from(
-        new Set([...DEFAULT_JURUSAN, ...members.map((m) => m.jurusan)])
-      ).filter(Boolean),
-    [members]
-  );
 
   const prodiOptions = useMemo(
     () => Array.from(new Set(members.map((m) => m.prodi))).filter(Boolean),
     [members]
   );
 
-  const labOptions = useMemo(
-    () => Array.from(new Set(members.map((m) => m.lab))).filter(Boolean),
-    [members]
-  );
-
-  const filterJurusanOptions = useMemo(
-    () => [
-      ALL_JURUSAN,
-      ...Array.from(new Set(members.map((m) => m.jurusan))).filter(Boolean),
-    ],
-    [members]
-  );
-
-  /* Kalau jurusan yang sedang difilter sudah tidak ada (mis. peneliti
-     terakhirnya dihapus), kembali ke "Semua Jurusan" supaya daftar tidak
-     kosong tanpa alasan dan dropdown tidak menampilkan nilai kosong. */
-  const activeJurusan = filterJurusanOptions.includes(jurusanFilter)
-    ? jurusanFilter
-    : ALL_JURUSAN;
-
   /* =========================================================
-     FILTER + PAGINASI
+     FILTER + URUTAN + PAGINASI
+     Urutan: terbaru ditambahkan di atas (id terbesar lebih dulu).
   ========================================================= */
 
   const filtered = useMemo(() => {
@@ -529,27 +481,19 @@ export default function ProfilPenelitiAdminPage() {
 
     return members
       .filter((m) => {
-        if (activeJurusan !== ALL_JURUSAN && m.jurusan !== activeJurusan) {
-          return false;
-        }
         if (!keyword) return true;
-
-        return [m.name, m.position, m.prodi, m.jurusan, m.lab, ...m.expertise]
-          .join(" ")
-          .toLowerCase()
-          .includes(keyword);
+        return [m.name, m.prodi].join(" ").toLowerCase().includes(keyword);
       })
-      .sort((a, b) =>
-        coreName(a.name).localeCompare(coreName(b.name), "id")
-      );
-  }, [members, search, activeJurusan]);
+      .sort((a, b) => b.id - a.id);
+  }, [members, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  const startIndex = (currentPage - 1) * pageSize;
+  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+  const showingFrom = filtered.length === 0 ? 0 : startIndex + 1;
+  const showingTo = startIndex + pageItems.length;
 
   /* =========================================================
      MODAL
@@ -583,11 +527,7 @@ export default function ProfilPenelitiAdminPage() {
 
   const openAddModal = () => {
     setSelected(null);
-    setForm({
-      ...emptyForm,
-      position: POSITIONS[0],
-      education: [{ ...emptyEducation }],
-    });
+    setForm({ ...emptyForm });
     setPhotoFile(null);
     setRemovePhoto(false);
     setPhotoError("");
@@ -628,6 +568,36 @@ export default function ProfilPenelitiAdminPage() {
   ) {
     setForm((current) => ({ ...current, [field]: value }));
   }
+
+  /* Isian tunggal "Tautan Profil SINTA": mengubah hanya tautan yang
+     bernama SINTA; tautan lain (kalau ada di data lama) dibiarkan. */
+  const setSintaUrl = (value: string) => {
+    setForm((current) => {
+      const index = current.links.findIndex(isSintaLink);
+
+      if (index === -1) {
+        if (!value.trim()) return current;
+        return {
+          ...current,
+          links: [...current.links, { label: SINTA_LABEL, href: value }],
+        };
+      }
+
+      if (!value.trim()) {
+        return {
+          ...current,
+          links: current.links.filter((_, i) => i !== index),
+        };
+      }
+
+      return {
+        ...current,
+        links: current.links.map((row, i) =>
+          i === index ? { ...row, href: value } : row
+        ),
+      };
+    });
+  };
 
   /* =========================================================
      UPLOAD FOTO (tanpa batasan ukuran file atau resolusi)
@@ -674,11 +644,7 @@ export default function ProfilPenelitiAdminPage() {
      SAVE (POST ke API)
   ========================================================= */
 
-  const canSave =
-    form.name.trim() !== "" &&
-    form.position.trim() !== "" &&
-    form.jurusan.trim() !== "" &&
-    form.prodi.trim() !== "";
+  const canSave = form.name.trim() !== "" && form.prodi.trim() !== "";
 
   const handleSave = async () => {
     if (!canSave || saving) return;
@@ -712,7 +678,11 @@ export default function ProfilPenelitiAdminPage() {
           current.map((member) => (member.id === saved.id ? saved : member))
         );
       } else {
-        setMembers((current) => [...current, saved]);
+        setMembers((current) => [saved, ...current]);
+
+        // data terbaru tampil di paling atas, jadi kembali ke halaman 1
+        setSearch("");
+        setPage(1);
       }
 
       closeModal();
@@ -784,17 +754,18 @@ export default function ProfilPenelitiAdminPage() {
             </div>
 
             <p className="mt-2 text-[13px] leading-6 text-[#5E6B58] sm:ml-[52px]">
-              Kelola data dosen peneliti yang tampil pada halaman Profil
-              Peneliti di situs publik.
+              Kelola daftar dosen peneliti pada halaman Profil Peneliti di situs
+              publik. Klik kartu di situs publik akan membuka tautan profil
+              SINTA peneliti.
             </p>
           </div>
 
           <button
             type="button"
             onClick={openAddModal}
-            className={`${btnPrimary} w-full sm:w-auto`}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start whitespace-nowrap rounded-full bg-[#31551F] px-5 text-[13px] font-semibold text-white shadow-[0_4px_12px_rgba(49,85,31,0.18)] transition hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] sm:self-auto"
           >
-            <Plus size={16} strokeWidth={2} />
+            <Plus size={16} strokeWidth={2.2} aria-hidden />
             Tambah Peneliti
           </button>
         </div>
@@ -813,9 +784,9 @@ export default function ProfilPenelitiAdminPage() {
         ===================================================== */}
 
         <div className="w-full rounded-[28px] bg-white/70 p-3 shadow-[0_8px_30px_rgba(31,42,26,0.06)] backdrop-blur sm:p-4 md:p-5">
-          {/* SEARCH + FILTER */}
+          {/* SEARCH */}
 
-          <div className="mb-4 grid gap-3 md:grid-cols-[1fr_240px]">
+          <div className="mb-4">
             <div className="relative">
               <Search
                 size={16}
@@ -830,38 +801,23 @@ export default function ProfilPenelitiAdminPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Cari nama, jabatan, prodi, atau keahlian..."
+                placeholder="Cari nama atau program studi..."
                 className="h-11 w-full rounded-full border border-transparent bg-white pl-11 pr-4 text-[13px] text-[#1F2A1A] shadow-[0_1px_4px_rgba(31,42,26,0.05)] outline-none transition placeholder:text-[#A3ADA7] focus:border-[#31551F] focus:ring-4 focus:ring-[#31551F]/10"
               />
             </div>
-
-            <select
-              value={activeJurusan}
-              onChange={(e) => {
-                setJurusanFilter(e.target.value);
-                setPage(1);
-              }}
-              aria-label="Filter jurusan"
-              className="h-11 w-full rounded-full border border-transparent bg-white px-4 text-[13px] text-[#1F2A1A] shadow-[0_1px_4px_rgba(31,42,26,0.05)] outline-none transition focus:border-[#31551F] focus:ring-4 focus:ring-[#31551F]/10"
-            >
-              {filterJurusanOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* TABLE */}
 
           <div className="w-full overflow-hidden rounded-[22px] bg-white">
             <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[860px] border-separate border-spacing-y-1 px-2 text-left">
+              <table className="w-full min-w-[820px] border-separate border-spacing-y-1 px-2 text-left">
                 <thead>
                   <tr>
                     <th className={`${thClass} min-w-[320px] pl-5`}>Peneliti</th>
-                    <th className={`${thClass} min-w-[220px]`}>Prodi dan Jurusan</th>
-                    <th className={`${thClass} min-w-[220px] text-center`}>Bidang Keahlian</th>
+                    <th className={`${thClass} min-w-[220px]`}>Program Studi</th>
+                    <th className={`${thClass} w-[120px]`}>ID SINTA</th>
+                    <th className={`${thClass} w-[130px] text-center`}>Tautan SINTA</th>
                     <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
                 </thead>
@@ -869,8 +825,7 @@ export default function ProfilPenelitiAdminPage() {
                 <tbody>
                   {pageItems.map((member) => {
                     const cell = "bg-white group-hover:bg-[#EEF4EA]";
-                    const shown = member.expertise.slice(0, 2);
-                    const rest = member.expertise.length - shown.length;
+                    const sintaUrl = getSintaUrl(member.links);
 
                     return (
                       <tr key={member.id} className="group">
@@ -882,46 +837,52 @@ export default function ProfilPenelitiAdminPage() {
                           <div className="flex items-center gap-3.5">
                             <PersonPhoto photo={member.photo} name={member.name} width={48} />
 
-                            <div className="min-w-0">
-                              <p className="max-w-[300px] text-[13px] font-semibold leading-[20px] text-[#1F2A1A]">
-                                {member.name}
-                              </p>
-                              <p className="text-[11.5px] text-[#3F6B28]">
-                                {member.position}
-                              </p>
-                            </div>
+                            <p className="max-w-[300px] text-[13px] font-semibold leading-[20px] text-[#1F2A1A]">
+                              {member.name}
+                            </p>
                           </div>
                         </td>
 
-                        {/* PRODI + JURUSAN */}
+                        {/* PRODI */}
 
                         <td className={`px-3 py-3 align-middle transition-colors ${cell}`}>
                           <p className="text-[12.5px] font-medium leading-5 text-[#1F2A1A]">
                             {member.prodi}
                           </p>
-                          <p className="text-[11.5px] leading-5 text-[#5E6B58]">
-                            {member.jurusan}
-                          </p>
                         </td>
 
-                        {/* KEAHLIAN */}
+                        {/* ID SINTA (dari tautan) */}
+
+                        <td className={`px-3 py-3 align-middle transition-colors ${cell}`}>
+                          {getSintaId(member.links) ? (
+                            <span className="text-[12.5px] font-medium text-[#1F2A1A]">
+                              {getSintaId(member.links)}
+                            </span>
+                          ) : (
+                            <span className="text-[12px] text-[#A3ADA7]">-</span>
+                          )}
+                        </td>
+
+                        {/* TAUTAN SINTA */}
 
                         <td
                           className={`px-3 py-3 text-center align-middle transition-colors ${cell}`}
                         >
-                          <div className="flex flex-wrap justify-center gap-1.5">
-                            {shown.map((tag) => (
-                              <Chip key={tag}>{tag}</Chip>
-                            ))}
-                            {rest > 0 && (
-                              <span className="rounded-full border border-[#D9E2D3] px-2.5 py-1 text-[11px] font-semibold leading-tight text-[#5E6B58]">
-                                +{rest}
-                              </span>
-                            )}
-                            {member.expertise.length === 0 && (
-                              <span className="text-[12px] text-[#A3ADA7]">-</span>
-                            )}
-                          </div>
+                          {sintaUrl ? (
+                            <a
+                              href={sintaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#31551F] hover:underline"
+                            >
+                              Buka
+                              <ExternalLink size={12} strokeWidth={2} aria-hidden />
+                            </a>
+                          ) : (
+                            <span className="text-[12px] text-[#A3ADA7]">
+                              Belum diisi
+                            </span>
+                          )}
                         </td>
 
                         {/* AKSI */}
@@ -951,7 +912,7 @@ export default function ProfilPenelitiAdminPage() {
 
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-5 py-16 text-center">
+                      <td colSpan={5} className="px-5 py-16 text-center">
                         <div className="flex flex-col items-center">
                           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF4EA] text-[#5E6B58]">
                             <Users size={20} strokeWidth={1.8} />
@@ -969,7 +930,7 @@ export default function ProfilPenelitiAdminPage() {
                             <p className="mt-1 text-[12px] text-[#5E6B58]">
                               {members.length === 0
                                 ? "Klik Tambah Peneliti untuk menambahkan data."
-                                : "Coba gunakan kata kunci atau jurusan lain."}
+                                : "Coba gunakan kata kunci lain."}
                             </p>
                           )}
                         </div>
@@ -982,59 +943,51 @@ export default function ProfilPenelitiAdminPage() {
 
             {/* FOOTER + PAGINASI */}
 
-            <div className="flex flex-col gap-3 border-t border-[#EEF2EF] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[12px] text-[#5E6B58]">
-                Menampilkan{" "}
-                <span className="font-medium text-[#1F2A1A]">{pageItems.length}</span>{" "}
-                dari {filtered.length} peneliti
-                {filtered.length !== members.length && ` (total ${members.length})`}
-              </p>
+            <div className="flex flex-col gap-3 border-t border-[#EEF2EF] px-5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <p className="text-[12px] text-[#5E6B58]">
+                  Menampilkan{" "}
+                  <span className="font-medium text-[#1F2A1A]">
+                    {showingFrom}-{showingTo}
+                  </span>{" "}
+                  dari {filtered.length} peneliti
+                  {filtered.length !== members.length &&
+                    ` (total ${members.length})`}
+                </p>
 
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    aria-label="Halaman sebelumnya"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D9E2D3] text-[#31551F] transition hover:bg-[#EEF4EA] disabled:pointer-events-none disabled:opacity-40"
+                <label className="flex items-center gap-2 text-[12px] text-[#5E6B58]">
+                  Per halaman
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    aria-label="Jumlah data per halaman"
+                    className="h-8 rounded-full border border-[#D9E2D3] bg-white px-3 text-[12px] font-medium text-[#1F2A1A] outline-none transition hover:border-[#8DC26F] focus:border-[#31551F] focus:ring-4 focus:ring-[#31551F]/10"
                   >
-                    <ChevronLeft size={15} strokeWidth={2} />
-                  </button>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-                  <span className="text-[12px] text-[#5E6B58]">
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    aria-label="Halaman berikutnya"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D9E2D3] text-[#31551F] transition hover:bg-[#EEF4EA] disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <ChevronRight size={15} strokeWidth={2} />
-                  </button>
-                </div>
-              )}
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onChange={setPage}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* daftar saran untuk kolom isian */}
-      <datalist id="opsi-jurusan">
-        {jurusanOptions.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
+      {/* daftar saran untuk kolom prodi */}
       <datalist id="opsi-prodi">
         {prodiOptions.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
-      <datalist id="opsi-lab">
-        {labOptions.map((o) => (
           <option key={o} value={o} />
         ))}
       </datalist>
@@ -1044,7 +997,7 @@ export default function ProfilPenelitiAdminPage() {
       ===================================================== */}
 
       {(modal === "add" || modal === "edit") && (
-        <ModalShell onClose={safeClose} maxWidth="max-w-[760px]">
+        <ModalShell onClose={safeClose} maxWidth="max-w-[600px]">
           <div className="flex max-h-[92vh] flex-col">
             <ModalHeader
               title={modal === "add" ? "Tambah Peneliti" : "Edit Peneliti"}
@@ -1101,54 +1054,13 @@ export default function ProfilPenelitiAdminPage() {
               {/* IDENTITAS */}
 
               <FormSection title="Identitas">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <FormField label="Nama Lengkap" required>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => updateField("name", e.target.value)}
-                        placeholder="Masukkan nama lengkap beserta gelar"
-                        className={inputClass}
-                      />
-                    </FormField>
-                  </div>
-
-                  <FormField label="Jabatan Fungsional" required>
-                    <select
-                      value={form.position}
-                      onChange={(e) => updateField("position", e.target.value)}
-                      className={inputClass}
-                    >
-                      {!POSITIONS.includes(form.position) && form.position && (
-                        <option value={form.position}>{form.position}</option>
-                      )}
-                      {POSITIONS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </FormField>
-
-                  <FormField label="NIDN">
+                <div className="space-y-4">
+                  <FormField label="Nama Lengkap" required>
                     <input
                       type="text"
-                      inputMode="numeric"
-                      value={form.nidn}
-                      onChange={(e) => updateField("nidn", e.target.value)}
-                      placeholder="Contoh: 0012345678"
-                      className={inputClass}
-                    />
-                  </FormField>
-
-                  <FormField label="Jurusan" required>
-                    <input
-                      type="text"
-                      list="opsi-jurusan"
-                      value={form.jurusan}
-                      onChange={(e) => updateField("jurusan", e.target.value)}
-                      placeholder="Pilih atau ketik jurusan"
+                      value={form.name}
+                      onChange={(e) => updateField("name", e.target.value)}
+                      placeholder="Masukkan nama lengkap beserta gelar"
                       className={inputClass}
                     />
                   </FormField>
@@ -1163,360 +1075,37 @@ export default function ProfilPenelitiAdminPage() {
                       className={inputClass}
                     />
                   </FormField>
-
-                  <FormField label="Laboratorium">
-                    <input
-                      type="text"
-                      list="opsi-lab"
-                      value={form.lab}
-                      onChange={(e) => updateField("lab", e.target.value)}
-                      placeholder="Contoh: Laboratorium Kecerdasan Buatan"
-                      className={inputClass}
-                    />
-                  </FormField>
-
-                  <FormField label="Email">
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => updateField("email", e.target.value)}
-                      placeholder="nama@polibatam.ac.id"
-                      className={inputClass}
-                    />
-                  </FormField>
                 </div>
               </FormSection>
 
-              {/* TENTANG */}
-
-              <FormSection title="Tentang">
-                <textarea
-                  value={form.about}
-                  onChange={(e) => updateField("about", e.target.value)}
-                  placeholder="Latar belakang, kegiatan riset, dan kontribusi peneliti"
-                  className={textareaClass}
-                />
-              </FormSection>
-
-              {/* KEAHLIAN */}
+              {/* TAUTAN PROFIL SINTA */}
 
               <FormSection
-                title="Bidang Keahlian"
-                hint="Ketik lalu tekan Enter atau koma untuk menambah"
+                title="Tautan Profil SINTA"
+                hint="Dibuka di tab baru saat kartu peneliti diklik di situs publik"
               >
-                <TagInput
-                  values={form.expertise}
-                  onChange={(v) => updateField("expertise", v)}
-                />
-              </FormSection>
+                <FormField label="Alamat Tautan">
+                  <input
+                    type="url"
+                    value={getSintaUrl(form.links)}
+                    onChange={(e) => setSintaUrl(e.target.value)}
+                    placeholder="https://sinta.kemdiktisaintek.go.id/authors/profile/..."
+                    className={inputClass}
+                  />
+                </FormField>
 
-              {/* PENDIDIKAN */}
-
-              <FormSection
-                title="Pendidikan"
-                action={
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField("education", [...form.education, { ...emptyEducation }])
-                    }
-                    className={btnSmall}
-                  >
-                    <Plus size={14} strokeWidth={2} />
-                    Tambah
-                  </button>
-                }
-              >
-                {form.education.length === 0 && <EmptyRows text="Belum ada riwayat pendidikan." />}
-
-                <div className="space-y-3">
-                  {form.education.map((row, i) => (
-                    <RowCard
-                      key={i}
-                      onRemove={() =>
-                        updateField(
-                          "education",
-                          form.education.filter((_, idx) => idx !== i)
-                        )
-                      }
-                    >
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <FormField label="Jenjang" required>
-                          <select
-                            value={row.degree}
-                            onChange={(e) =>
-                              updateField(
-                                "education",
-                                patchRow(form.education, i, { degree: e.target.value })
-                              )
-                            }
-                            className={inputClass}
-                          >
-                            <option value="">Pilih jenjang</option>
-                            {DEGREES.map((d) => (
-                              <option key={d} value={d}>
-                                {d}
-                              </option>
-                            ))}
-                          </select>
-                        </FormField>
-
-                        <FormField label="Bidang / Jurusan">
-                          <input
-                            type="text"
-                            value={row.field}
-                            onChange={(e) =>
-                              updateField(
-                                "education",
-                                patchRow(form.education, i, { field: e.target.value })
-                              )
-                            }
-                            placeholder="Contoh: Teknik Informatika"
-                            className={inputClass}
-                          />
-                        </FormField>
-
-                        <FormField label="Institusi" required>
-                          <input
-                            type="text"
-                            value={row.school}
-                            onChange={(e) =>
-                              updateField(
-                                "education",
-                                patchRow(form.education, i, { school: e.target.value })
-                              )
-                            }
-                            placeholder="Nama perguruan tinggi"
-                            className={inputClass}
-                          />
-                        </FormField>
-
-                        <FormField label="Tahun Lulus">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={4}
-                            value={row.year}
-                            onChange={(e) =>
-                              updateField(
-                                "education",
-                                patchRow(form.education, i, {
-                                  year: e.target.value.replace(/\D/g, ""),
-                                })
-                              )
-                            }
-                            placeholder="2021"
-                            className={inputClass}
-                          />
-                        </FormField>
-                      </div>
-                    </RowCard>
-                  ))}
-                </div>
-              </FormSection>
-
-              {/* LUARAN PENELITIAN */}
-
-              <FormSection
-                title="Luaran Penelitian"
-                action={
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField("publications", [
-                        ...form.publications,
-                        { ...emptyPublication },
-                      ])
-                    }
-                    className={btnSmall}
-                  >
-                    <Plus size={14} strokeWidth={2} />
-                    Tambah
-                  </button>
-                }
-              >
-                {form.publications.length === 0 && (
-                  <EmptyRows text="Belum ada luaran penelitian." />
-                )}
-
-                <div className="space-y-3">
-                  {form.publications.map((row, i) => (
-                    <RowCard
-                      key={i}
-                      onRemove={() =>
-                        updateField(
-                          "publications",
-                          form.publications.filter((_, idx) => idx !== i)
-                        )
-                      }
-                    >
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="sm:col-span-2">
-                          <FormField label="Judul" required>
-                            <input
-                              type="text"
-                              value={row.title}
-                              onChange={(e) =>
-                                updateField(
-                                  "publications",
-                                  patchRow(form.publications, i, { title: e.target.value })
-                                )
-                              }
-                              placeholder="Judul karya"
-                              className={inputClass}
-                            />
-                          </FormField>
-                        </div>
-
-                        <div className="sm:col-span-2">
-                          <FormField label="Penulis">
-                            <input
-                              type="text"
-                              value={row.authors}
-                              onChange={(e) =>
-                                updateField(
-                                  "publications",
-                                  patchRow(form.publications, i, { authors: e.target.value })
-                                )
-                              }
-                              placeholder="Contoh: R. Marlina, A. Penulis"
-                              className={inputClass}
-                            />
-                          </FormField>
-                        </div>
-
-                        <div className="sm:col-span-2">
-                          <FormField label="Jurnal / Penerbit / Prosiding">
-                            <input
-                              type="text"
-                              value={row.venue}
-                              onChange={(e) =>
-                                updateField(
-                                  "publications",
-                                  patchRow(form.publications, i, { venue: e.target.value })
-                                )
-                              }
-                              placeholder="Nama jurnal, prosiding, atau penerbit"
-                              className={inputClass}
-                            />
-                          </FormField>
-                        </div>
-
-                        <FormField label="Jenis">
-                          <select
-                            value={row.type}
-                            onChange={(e) =>
-                              updateField(
-                                "publications",
-                                patchRow(form.publications, i, { type: e.target.value })
-                              )
-                            }
-                            className={inputClass}
-                          >
-                            {PUBLICATION_TYPES.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ))}
-                          </select>
-                        </FormField>
-
-                        <FormField label="Tahun">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={4}
-                            value={row.year}
-                            onChange={(e) =>
-                              updateField(
-                                "publications",
-                                patchRow(form.publications, i, {
-                                  year: e.target.value.replace(/\D/g, ""),
-                                })
-                              )
-                            }
-                            placeholder="2024"
-                            className={inputClass}
-                          />
-                        </FormField>
-                      </div>
-                    </RowCard>
-                  ))}
-                </div>
-              </FormSection>
-
-              {/* TAUTAN PROFIL */}
-
-              <FormSection
-                title="Tautan Profil"
-                hint="Scopus, SINTA, Google Scholar, ORCID, dan sebagainya"
-                action={
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField("links", [...form.links, { ...emptyLink }])
-                    }
-                    className={btnSmall}
-                  >
-                    <Plus size={14} strokeWidth={2} />
-                    Tambah
-                  </button>
-                }
-              >
-                {form.links.length === 0 && <EmptyRows text="Belum ada tautan profil." />}
-
-                <div className="space-y-3">
-                  {form.links.map((row, i) => (
-                    <RowCard
-                      key={i}
-                      onRemove={() =>
-                        updateField(
-                          "links",
-                          form.links.filter((_, idx) => idx !== i)
-                        )
-                      }
-                    >
-                      <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
-                        <FormField label="Nama" required>
-                          <input
-                            type="text"
-                            list="opsi-tautan"
-                            value={row.label}
-                            onChange={(e) =>
-                              updateField(
-                                "links",
-                                patchRow(form.links, i, { label: e.target.value })
-                              )
-                            }
-                            placeholder="SINTA"
-                            className={inputClass}
-                          />
-                        </FormField>
-
-                        <FormField label="Alamat Tautan" required>
-                          <input
-                            type="url"
-                            value={row.href}
-                            onChange={(e) =>
-                              updateField(
-                                "links",
-                                patchRow(form.links, i, { href: e.target.value })
-                              )
-                            }
-                            placeholder="https://..."
-                            className={inputClass}
-                          />
-                        </FormField>
-                      </div>
-                    </RowCard>
-                  ))}
-                </div>
-
-                <datalist id="opsi-tautan">
-                  {LINK_SUGGESTIONS.map((o) => (
-                    <option key={o} value={o} />
-                  ))}
-                </datalist>
+                <p className="mt-2 text-[11.5px] leading-5 text-[#8A948E]">
+                  ID SINTA diambil otomatis dari tautan.{" "}
+                  {getSintaId(form.links) ? (
+                    <span className="font-semibold text-[#31551F]">
+                      Terdeteksi: {getSintaId(form.links)}
+                    </span>
+                  ) : (
+                    <span>Belum terdeteksi.</span>
+                  )}{" "}
+                  Kalau dikosongkan, kartu peneliti tetap tampil tetapi tidak
+                  bisa diklik.
+                </p>
               </FormSection>
 
               {saveError && (
@@ -1557,15 +1146,15 @@ export default function ProfilPenelitiAdminPage() {
       )}
 
       {/* =====================================================
-          DETAIL MODAL (pratinjau profil)
+          DETAIL MODAL (pratinjau kartu)
       ===================================================== */}
 
       {modal === "detail" && selected && (
-        <ModalShell onClose={closeModal} maxWidth="max-w-[640px]">
+        <ModalShell onClose={closeModal} maxWidth="max-w-[520px]">
           <div className="flex max-h-[92vh] flex-col">
             <ModalHeader
               title="Detail Peneliti"
-              subtitle="Data yang tampil pada halaman Profil Peneliti."
+              subtitle="Data yang tampil pada kartu di halaman Profil Peneliti."
               onClose={closeModal}
             />
 
@@ -1574,111 +1163,35 @@ export default function ProfilPenelitiAdminPage() {
                 <PersonPhoto photo={selected.photo} name={selected.name} width={140} />
 
                 <div className="min-w-0 text-center sm:text-left">
-                  <p className="text-[11.5px] font-semibold text-[#3F6B28]">
-                    {selected.position}
-                  </p>
-                  <h3 className="mt-1 break-words text-[17px] font-semibold leading-[1.4] text-[#1F2A1A]">
+                  <h3 className="break-words text-[17px] font-semibold leading-[1.4] text-[#1F2A1A]">
                     {selected.name}
                   </h3>
                   <p className="mt-1 text-[12.5px] leading-6 text-[#5E6B58]">
-                    {selected.prodi} | {selected.jurusan}
+                    {selected.prodi}
                   </p>
-
-                  <dl className="mt-3 space-y-1 text-[12.5px] text-[#4A5646]">
-                    {selected.nidn && (
-                      <div>
-                        <dt className="inline font-medium">NIDN: </dt>
-                        <dd className="inline">{selected.nidn}</dd>
-                      </div>
-                    )}
-                    {selected.lab && (
-                      <div>
-                        <dt className="inline font-medium">Laboratorium: </dt>
-                        <dd className="inline">{selected.lab}</dd>
-                      </div>
-                    )}
-                    {selected.email && (
-                      <div>
-                        <dt className="inline font-medium">Email: </dt>
-                        <dd className="inline break-all">{selected.email}</dd>
-                      </div>
-                    )}
-                  </dl>
+                  {getSintaId(selected.links) && (
+                    <p className="mt-1 text-[12px] font-medium text-[#8A948E]">
+                      ID : {getSintaId(selected.links)}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {selected.about && (
-                <DetailBlock title="Tentang">
-                  <p className="whitespace-pre-line text-[13px] leading-[1.8] text-[#5E6B58]">
-                    {selected.about}
-                  </p>
-                </DetailBlock>
-              )}
-
-              {selected.expertise.length > 0 && (
-                <DetailBlock title="Bidang Keahlian">
-                  <div className="flex flex-wrap gap-2">
-                    {selected.expertise.map((tag) => (
-                      <Chip key={tag}>{tag}</Chip>
-                    ))}
-                  </div>
-                </DetailBlock>
-              )}
-
-              {selected.education.length > 0 && (
-                <DetailBlock title="Pendidikan">
-                  <ul className="space-y-2">
-                    {selected.education.map((row, i) => (
-                      <li key={i} className="text-[13px] leading-6 text-[#1F2A1A]">
-                        <span className="font-medium">
-                          {row.degree}
-                          {row.field && ` - ${row.field}`}
-                        </span>
-                        <span className="text-[#5E6B58]">
-                          , {row.school}
-                          {row.year && ` (${row.year})`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </DetailBlock>
-              )}
-
-              {selected.publications.length > 0 && (
-                <DetailBlock title={`Luaran Penelitian (${selected.publications.length})`}>
-                  <ul className="space-y-3">
-                    {selected.publications.map((row, i) => (
-                      <li key={i} className="text-[13px] leading-6">
-                        <p className="font-medium text-[#31551F]">{row.title}</p>
-                        <p className="text-[12px] text-[#5E6B58]">
-                          {[row.authors, row.venue].filter(Boolean).join(", ")}
-                          {(row.type || row.year) &&
-                            ` | ${[row.type, row.year].filter(Boolean).join(", ")}`}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </DetailBlock>
-              )}
-
-              {selected.links.length > 0 && (
-                <DetailBlock title="Tautan Profil">
-                  <div className="flex flex-wrap gap-2">
-                    {selected.links.map((row, i) => (
-                      <a
-                        key={i}
-                        href={row.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={btnSmall}
-                      >
-                        {row.label}
-                        <ExternalLink size={12} strokeWidth={2} aria-hidden />
-                      </a>
-                    ))}
-                  </div>
-                </DetailBlock>
-              )}
+              <DetailBlock title="Tautan Profil SINTA">
+                {getSintaUrl(selected.links) ? (
+                  <a
+                    href={getSintaUrl(selected.links)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={btnSmall}
+                  >
+                    Buka Profil
+                    <ExternalLink size={12} strokeWidth={2} aria-hidden />
+                  </a>
+                ) : (
+                  <p className="text-[13px] text-[#8A948E]">Belum diisi.</p>
+                )}
+              </DetailBlock>
             </div>
           </div>
         </ModalShell>
@@ -1702,6 +1215,73 @@ export default function ProfilPenelitiAdminPage() {
         </ConfirmDelete>
       )}
     </div>
+  );
+}
+
+/* =========================================================
+   PAGINATION (nomor halaman + sebelumnya/berikutnya)
+========================================================= */
+
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+}) {
+  const arrow =
+    "flex h-8 w-8 items-center justify-center rounded-full border border-[#D9E2D3] bg-white text-[#31551F] transition hover:bg-[#EEF4EA] disabled:pointer-events-none disabled:opacity-40";
+
+  return (
+    <nav
+      aria-label="Halaman tabel"
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      <button
+        type="button"
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+        aria-label="Halaman sebelumnya"
+        className={arrow}
+      >
+        <ChevronLeft size={15} strokeWidth={2} />
+      </button>
+
+      {pageList(page, totalPages).map((item, i) =>
+        item === "…" ? (
+          <span key={`gap-${i}`} className="px-1 text-[12px] text-[#A3AE9E]">
+            …
+          </span>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            aria-label={`Halaman ${item}`}
+            aria-current={item === page ? "page" : undefined}
+            className={`h-8 min-w-8 rounded-full px-2.5 text-[12px] font-semibold transition ${
+              item === page
+                ? "border border-[#31551F] bg-[#31551F] text-white"
+                : "border border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
+            }`}
+          >
+            {item}
+          </button>
+        )
+      )}
+
+      <button
+        type="button"
+        onClick={() => onChange(page + 1)}
+        disabled={page === totalPages}
+        aria-label="Halaman berikutnya"
+        className={arrow}
+      >
+        <ChevronRight size={15} strokeWidth={2} />
+      </button>
+    </nav>
   );
 }
 
@@ -1746,86 +1326,13 @@ function PersonPhoto({
    KOMPONEN KECIL
 ========================================================= */
 
-function Chip({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded-full bg-[#EEF4EA] px-2.5 py-1 text-[11px] font-semibold leading-tight text-[#31551F]">
-      {children}
-    </span>
-  );
-}
-
-/* Input tag untuk bidang keahlian */
-function TagInput({
-  values,
-  onChange,
-}: {
-  values: string[];
-  onChange: (values: string[]) => void;
-}) {
-  const [draft, setDraft] = useState("");
-
-  const add = () => {
-    const tag = draft.replace(/,/g, "").trim();
-
-    if (tag && !values.some((v) => v.toLowerCase() === tag.toLowerCase())) {
-      onChange([...values, tag]);
-    }
-
-    setDraft("");
-  };
-
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      add();
-    } else if (event.key === "Backspace" && !draft && values.length > 0) {
-      onChange(values.slice(0, -1));
-    }
-  };
-
-  return (
-    <div className="rounded-xl border border-[#D9E2D3] bg-white p-2.5 transition focus-within:border-[#31551F] focus-within:ring-4 focus-within:ring-[#31551F]/10">
-      <div className="flex flex-wrap gap-1.5">
-        {values.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-[#EEF4EA] py-1 pl-2.5 pr-1.5 text-[11.5px] font-semibold leading-tight text-[#31551F]"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => onChange(values.filter((v) => v !== tag))}
-              aria-label={`Hapus ${tag}`}
-              className="flex h-4 w-4 items-center justify-center rounded-full transition hover:bg-[#31551F] hover:text-white"
-            >
-              <X size={10} strokeWidth={2.4} />
-            </button>
-          </span>
-        ))}
-
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={add}
-          placeholder={values.length === 0 ? "Contoh: Machine Learning" : "Tambah keahlian..."}
-          className="h-7 min-w-[160px] flex-1 bg-transparent px-1 text-[13px] text-[#1F2A1A] outline-none placeholder:text-[#A3ADA7]"
-        />
-      </div>
-    </div>
-  );
-}
-
 function FormSection({
   title,
   hint,
-  action,
   children,
 }: {
   title: string;
   hint?: string;
-  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -1835,44 +1342,10 @@ function FormSection({
           <h3 className="text-[14px] font-semibold text-[#1F2A1A]">{title}</h3>
           {hint && <p className="mt-0.5 text-[11.5px] text-[#8A948E]">{hint}</p>}
         </div>
-
-        {action}
       </div>
 
       {children}
     </section>
-  );
-}
-
-function RowCard({
-  onRemove,
-  children,
-}: {
-  onRemove: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative rounded-xl border border-[#E7EDE3] bg-[#F9FBF7] p-3.5 pr-11">
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label="Hapus baris"
-        title="Hapus baris"
-        className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full text-[#D34B4B] transition hover:bg-[#FFF1F1]"
-      >
-        <Trash2 size={14} strokeWidth={1.8} />
-      </button>
-
-      {children}
-    </div>
-  );
-}
-
-function EmptyRows({ text }: { text: string }) {
-  return (
-    <p className="rounded-xl border border-dashed border-[#D9E2D3] px-4 py-4 text-center text-[12px] text-[#8A948E]">
-      {text}
-    </p>
   );
 }
 

@@ -22,17 +22,26 @@ class PenelitiController extends Controller
     private const FOTO_WIDTH = 800;
     private const FOTO_HEIGHT = 1000;
 
-    /* Kolom JSON yang dikirim lengkap oleh frontend */
-    private const KOLOM_ARRAY = ['keahlian', 'pendidikan', 'luaran', 'tautan'];
+    /* Halaman publik hanya memakai: foto, nama, prodi, dan tautan
+       profil SINTA. Kolom lain (jabatan, jurusan, lab, keahlian,
+       NIDN, email, dst.) tidak lagi dikelola dari form admin, tapi
+       datanya tetap disimpan dan tidak dihapus. */
 
     /* Publik dan admin: daftar peneliti, urut nama */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        // Admin (login Sanctum) menerima data lengkap supaya form bisa
+        // mengirim ulang data lama. Publik hanya menerima yang dipakai
+        // halaman, jadi email dan NIDN tidak ikut terbuka.
+        $lengkap = $request->user('sanctum') !== null;
+
         $items = Peneliti::query()
             ->orderBy('nama')
             ->orderBy('id')
             ->get()
-            ->map(fn (Peneliti $item) => $this->format($item));
+            ->map(fn (Peneliti $item) => $lengkap
+                ? $this->formatLengkap($item)
+                : $this->formatPublik($item));
 
         return response()->json(['data' => $items]);
     }
@@ -40,7 +49,7 @@ class PenelitiController extends Controller
     /* Admin: detail satu peneliti */
     public function show(Peneliti $peneliti): JsonResponse
     {
-        return response()->json(['data' => $this->format($peneliti)]);
+        return response()->json(['data' => $this->formatLengkap($peneliti)]);
     }
 
     /* Admin: tambah peneliti */
@@ -49,7 +58,8 @@ class PenelitiController extends Controller
         $data = $this->validasi($request);
         unset($data['foto'], $data['hapus_foto']);
 
-        $data = $this->lengkapiArray($data);
+        // Tautan yang tidak dikirim berarti tidak ada tautan
+        $data['tautan'] = array_values($data['tautan'] ?? []);
 
         if ($request->hasFile('foto')) {
             $data['foto'] = $this->simpanFoto($request->file('foto'));
@@ -57,7 +67,7 @@ class PenelitiController extends Controller
 
         $item = Peneliti::create($data);
 
-        return response()->json(['data' => $this->format($item)], 201);
+        return response()->json(['data' => $this->formatLengkap($item)], 201);
     }
 
     /* Admin: ubah peneliti (frontend: POST + _method=PUT) */
@@ -66,21 +76,30 @@ class PenelitiController extends Controller
         $data = $this->validasi($request);
         unset($data['foto'], $data['hapus_foto']);
 
-        // Frontend selalu mengirim array secara lengkap. Kalau sebuah
-        // array tidak ada di request, artinya semua barisnya dihapus.
-        $data = $this->lengkapiArray($data);
+        // Hanya tautan yang dikelola form: kalau tidak dikirim, berarti
+        // semua tautan dihapus. Kolom lain yang tidak dikirim dibiarkan
+        // seperti sebelumnya (tidak dikosongkan).
+        $data['tautan'] = array_values($data['tautan'] ?? []);
+
+        $fotoLama = $peneliti->foto;
+        $hapusFotoLama = false;
 
         if ($request->hasFile('foto')) {
-            $this->hapusFoto($peneliti->foto);
             $data['foto'] = $this->simpanFoto($request->file('foto'));
+            $hapusFotoLama = true;
         } elseif ($request->boolean('hapus_foto')) {
-            $this->hapusFoto($peneliti->foto);
             $data['foto'] = null;
+            $hapusFotoLama = true;
         }
 
         $peneliti->update($data);
 
-        return response()->json(['data' => $this->format($peneliti->fresh())]);
+        // Foto lama baru dihapus setelah data berhasil diperbarui
+        if ($hapusFotoLama) {
+            $this->hapusFoto($fotoLama);
+        }
+
+        return response()->json(['data' => $this->formatLengkap($peneliti->fresh())]);
     }
 
     /* Admin: hapus peneliti beserta file fotonya */
@@ -94,18 +113,21 @@ class PenelitiController extends Controller
 
     /* =========================================================
        VALIDASI
+       Wajib: nama dan prodi. Semua kolom lain opsional.
     ========================================================= */
 
     private function validasi(Request $request): array
     {
         return $request->validate([
             'nama'         => ['required', 'string', 'max:255'],
-            'jabatan'      => ['required', 'string', 'max:100'],
+            'prodi'        => ['required', 'string', 'max:150'],
+
+            // Tidak lagi diisi dari form; boleh kosong
+            'jabatan'      => ['nullable', 'string', 'max:100'],
+            'jurusan'      => ['nullable', 'string', 'max:150'],
+            'laboratorium' => ['nullable', 'string', 'max:255'],
             'nidn'         => ['nullable', 'string', 'max:30'],
             'email'        => ['nullable', 'email', 'max:255'],
-            'jurusan'      => ['required', 'string', 'max:150'],
-            'prodi'        => ['required', 'string', 'max:150'],
-            'laboratorium' => ['nullable', 'string', 'max:255'],
             'tentang'      => ['nullable', 'string'],
 
             // Tanpa batas ukuran/resolusi, hanya harus berupa gambar
@@ -132,11 +154,9 @@ class PenelitiController extends Controller
             'tautan.*.label' => ['required', 'string', 'max:100'],
             'tautan.*.url'   => ['required', 'url', 'max:500'],
         ], [
-            'nama.required'    => 'Nama lengkap wajib diisi.',
-            'jabatan.required' => 'Jabatan fungsional wajib diisi.',
-            'jurusan.required' => 'Jurusan wajib diisi.',
-            'prodi.required'   => 'Program studi wajib diisi.',
-            'email.email'      => 'Format email tidak valid.',
+            'nama.required'  => 'Nama lengkap wajib diisi.',
+            'prodi.required' => 'Program studi wajib diisi.',
+            'email.email'    => 'Format email tidak valid.',
 
             'foto.image' => 'File foto harus berupa gambar.',
 
@@ -154,21 +174,29 @@ class PenelitiController extends Controller
         ]);
     }
 
-    /* Array yang tidak dikirim dianggap kosong, bukan "tidak diubah" */
-    private function lengkapiArray(array $data): array
-    {
-        foreach (self::KOLOM_ARRAY as $kolom) {
-            $data[$kolom] = array_values($data[$kolom] ?? []);
-        }
-
-        return $data;
-    }
-
     /* =========================================================
        FORMAT RESPONSE (path foto diubah menjadi URL lengkap)
     ========================================================= */
 
-    private function format(Peneliti $item): array
+    private function urlFoto(Peneliti $item): ?string
+    {
+        return $item->foto ? asset('storage/' . $item->foto) : null;
+    }
+
+    /* Publik: hanya yang tampil di halaman Profil Peneliti */
+    private function formatPublik(Peneliti $item): array
+    {
+        return [
+            'id'     => $item->id,
+            'nama'   => $item->nama,
+            'prodi'  => $item->prodi,
+            'foto'   => $this->urlFoto($item),
+            'tautan' => $item->tautan ?? [],
+        ];
+    }
+
+    /* Admin: data lengkap (termasuk data lama yang tidak ditampilkan) */
+    private function formatLengkap(Peneliti $item): array
     {
         return [
             'id'           => $item->id,
@@ -179,9 +207,7 @@ class PenelitiController extends Controller
             'jurusan'      => $item->jurusan,
             'prodi'        => $item->prodi,
             'laboratorium' => $item->laboratorium,
-            'foto'         => $item->foto
-                ? asset('storage/' . $item->foto)
-                : null,
+            'foto'         => $this->urlFoto($item),
             'tentang'      => $item->tentang,
             'keahlian'     => $item->keahlian ?? [],
             'pendidikan'   => $item->pendidikan ?? [],

@@ -75,6 +75,11 @@ const PIE_COLORS = [
   "#D5EBC4",
 ];
 
+/* Jumlah program studi per halaman pada grafik "Per Prodi".
+   Sengaja 7 = jumlah warna donat (PIE_COLORS), jadi warna tiap
+   irisan di satu halaman tidak pernah kembar. */
+const PRODI_PAGE_SIZE = 7;
+
 /* =========================================================
    API
    GET /api/infografis (publik). Tanggal pembaruan data diambil
@@ -173,8 +178,8 @@ const EN: Record<string, string> = {
     "Calculated from lecturers registered in the Researcher Profile.",
 
   /* nama file unduhan */
-  "total-p2m": "total-p2m",
-  "p2m-per-jurusan": "p2m-per-department",
+  "total-p3m": "total-p3m",
+  "p3m-per-jurusan": "p3m-per-department",
   "partisipasi-dosen": "lecturer-participation",
   "total-per-tahun": "total-per-year",
   "penelitian-per-tahun": "research-per-year",
@@ -258,7 +263,6 @@ type ProdiInfo = { name: string; short: string; jurusan: string };
 
 type DosenItem = {
   name: string;
-  nip: string;
   prodi: string;
   jurusan: string;
   penelitian: number;
@@ -286,6 +290,28 @@ const EMPTY_DATA: InfografisData = {
   dosen: [],
   translations: {},
 };
+
+/* =========================================================
+   DATA TANPA PROGRAM STUDI
+   Peneliti dari SINTA kadang tidak punya isian program studi, lalu
+   diisi "-" oleh admin. Data seperti itu tidak ditampilkan di
+   infografis: tidak muncul di grafik, filter, tabel, maupun hitungan
+   total, supaya angka di semua grafik tetap sama dan konsisten.
+   Nilai kosong yang dikenali: teks kosong, "-", dan variannya.
+========================================================= */
+
+const isBlank = (value: unknown) =>
+  typeof value !== "string" || /^[\s\-\u2013\u2014]*$/.test(value);
+
+function sanitizeData(raw: InfografisData): InfografisData {
+  return {
+    ...raw,
+    jurusan: (raw.jurusan ?? []).filter((name) => !isBlank(name)),
+    prodi: (raw.prodi ?? []).filter((p) => !isBlank(p.name)),
+    rows: (raw.rows ?? []).filter((row) => !isBlank(row.prodi)),
+    dosen: (raw.dosen ?? []).filter((d) => !isBlank(d.prodi)),
+  };
+}
 
 /* Jumlahkan peta {label: jumlah} dari banyak baris, urut terbanyak */
 function sumMap(rows: Row[], key: "programPenelitian" | "jenisPengabdian") {
@@ -1361,6 +1387,98 @@ function DataTable<T>({
 }
 
 /* =========================================================
+   PAGINASI GRAFIK (bergaya jendela)
+   Dipakai grafik yang datanya banyak (mis. Per Prodi).
+   Bentuk: [ Sebelumnya | 1 | 2 | 3 | 4 | Berikutnya ]
+   Hanya menampilkan CHART_PAGE_WINDOW nomor di sekitar halaman aktif,
+   jadi tetap ringkas walau halamannya banyak. Di HP, "Sebelumnya"
+   dan "Berikutnya" menjadi panah saja.
+========================================================= */
+
+const CHART_PAGE_WINDOW = 5;
+
+function getPageWindow(
+  current: number,
+  total: number,
+  size = CHART_PAGE_WINDOW
+) {
+  const count = Math.min(size, total);
+
+  let start = current - Math.floor(count / 2);
+  start = Math.max(1, Math.min(start, total - count + 1));
+
+  return Array.from({ length: count }, (_, i) => start + i);
+}
+
+function ChartPagination({
+  current,
+  total,
+  onChange,
+}: {
+  current: number;
+  total: number;
+  onChange: (page: number) => void;
+}) {
+  const numbers = getPageWindow(current, total);
+
+  const edgeClass =
+    "flex h-9 items-center justify-center px-3 text-[12px] font-medium text-[#31551F] transition-colors duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#31551F] disabled:pointer-events-none disabled:text-[#A3AE9E] sm:px-4";
+
+  return (
+    <nav aria-label="Halaman grafik" className="flex justify-center">
+      <div className="inline-flex items-stretch overflow-hidden rounded-xl border border-[#D9E2D3] bg-white">
+        <button
+          type="button"
+          onClick={() => onChange(current - 1)}
+          disabled={current === 1}
+          aria-label="Halaman sebelumnya"
+          className={edgeClass}
+        >
+          <ChevronLeft size={15} strokeWidth={2} aria-hidden className="sm:hidden" />
+          <span className="hidden sm:inline">Sebelumnya</span>
+        </button>
+
+        {numbers.map((number) => {
+          const isActive = number === current;
+
+          return (
+            <button
+              key={number}
+              type="button"
+              onClick={() => onChange(number)}
+              aria-label={`Halaman ${number}`}
+              aria-current={isActive ? "page" : undefined}
+              className="flex h-9 min-w-[38px] items-center justify-center border-l border-[#D9E2D3] p-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#31551F]"
+            >
+              <span
+                className={`flex h-full w-full items-center justify-center rounded-lg px-2 text-[12px] font-semibold transition-colors duration-300 ${
+                  isActive
+                    ? "bg-[#31551F] text-white"
+                    : "text-[#4A5646] hover:bg-[#EEF4EA] hover:text-[#31551F]"
+                }`}
+              >
+                {number}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => onChange(current + 1)}
+          disabled={current === total}
+          aria-label="Halaman berikutnya"
+          className={`${edgeClass} border-l border-[#D9E2D3]`}
+        >
+          <span className="hidden sm:inline">Berikutnya</span>
+          <ChevronRight size={15} strokeWidth={2} aria-hidden className="sm:hidden" />
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+/* =========================================================
    PANEL GRAFIK
    Satu data, beberapa tampilan: garis, batang, lingkaran, tabel.
    Tombol: ganti tampilan, kembalikan ke awal, unduh gambar (PNG),
@@ -1733,6 +1851,7 @@ function ChartPanel({
   updatedAt: updatedAtProp,
   filters,
   filterSummary = "",
+  pageSize,
 }: {
   title: string;
   labels: string[];
@@ -1757,16 +1876,47 @@ function ChartPanel({
   filterSummary?: string;
   /** tanggal pembaruan data panel ini ("YYYY-MM-DD"); dipakai untuk nama file */
   updatedAt?: string;
+  /** jumlah data per halaman pada tampilan grafik (garis, batang, lingkaran).
+      Kosong = semua data ditampilkan sekaligus. Unduhan CSV dan tampilan
+      tabel tetap memuat semua data. */
+  pageSize?: number;
 }) {
   const [mode, setMode] = useState<Mode>(defaultMode);
   const [pngState, setPngState] = useState<"idle" | "busy" | "error">("idle");
+  const [page, setPage] = useState(1);
   const chartRef = useRef<HTMLDivElement>(null);
   const updatedFromContext = useContext(UpdatedAtContext);
   const updatedAt = updatedAtProp ?? updatedFromContext;
 
+  /* kembali ke halaman 1 setiap filter berubah */
+  useEffect(() => {
+    setPage(1);
+  }, [fileTag]);
+
   const all = overlay ? [...series, overlay] : series;
   const names = fullLabels ?? labels;
 
+  /* ---------- paginasi (hanya untuk tampilan grafik) ---------- */
+  const size = pageSize ?? 0;
+  const paged = size > 0 && labels.length > size;
+  const totalPages = paged ? Math.ceil(labels.length / size) : 1;
+  const safePage = Math.min(page, totalPages);
+  const from = paged ? (safePage - 1) * size : 0;
+  const to = paged ? Math.min(from + size, labels.length) : labels.length;
+
+  const part = <T,>(items: T[]) => items.slice(from, to);
+
+  const chartLabels = part(labels);
+  const chartNames = part(names);
+  const chartSeries: Series[] = series.map((s) => ({
+    ...s,
+    data: part(s.data),
+  }));
+  const chartOverlay: Series | undefined = overlay
+    ? { ...overlay, data: part(overlay.data) }
+    : undefined;
+
+  /* tabel dan CSV selalu memakai SEMUA data */
   const tableRows = labels.map((_, i) => ({
     label: names[i],
     values: all.map((s) => s.data[i]),
@@ -1795,9 +1945,10 @@ function ChartPanel({
     .filter(Boolean)
     .join("-");
 
-  const pieItems = labels.map((_, i) => ({
-    label: names[i],
-    value: series[0].data[i],
+  /* diagram lingkaran: hanya data pada halaman yang sedang dibuka */
+  const pieItems = chartLabels.map((_, i) => ({
+    label: chartNames[i],
+    value: chartSeries[0].data[i],
   }));
 
   const handlePng = async () => {
@@ -1807,13 +1958,19 @@ function ChartPanel({
     setPngState("busy");
 
     try {
+      /* gambar PNG memuat halaman yang sedang dibuka, jadi
+         keterangan halamannya ikut dicetak */
+      const pageCaption = paged
+        ? `${labelHeader} ${from + 1}-${to} ${isEnglish() ? "of" : "dari"} ${labels.length}`
+        : "";
+
       await downloadChartPng({
         fileName: baseName,
         title,
         svg,
         legend: mode === "pie" || !showLegend ? [] : legendItems,
         pieItems: mode === "pie" ? pieItems : undefined,
-        caption: filterSummary,
+        caption: [filterSummary, pageCaption].filter(Boolean).join("  |  "),
       });
       setPngState("idle");
     } catch {
@@ -1860,7 +2017,10 @@ function ChartPanel({
           type="button"
           title="Kembalikan tampilan awal"
           aria-label="Kembalikan tampilan awal"
-          onClick={() => setMode(defaultMode)}
+          onClick={() => {
+            setMode(defaultMode);
+            setPage(1);
+          }}
           className={toolbarButton}
         >
           <RotateCcw size={16} strokeWidth={1.9} aria-hidden />
@@ -1911,32 +2071,55 @@ function ChartPanel({
 
       {/* ISI */}
       {mode !== "table" && (
-        <div ref={chartRef}>
-          {(mode === "bar" || mode === "line") && (
-            <>
-              {showLegend && <Legend items={legendItems} />}
-              <XYChart
-                labels={labels}
-                series={series}
-                overlay={overlay}
-                kind={mode}
-                percent={percent}
-                vary={vary && mode === "bar"}
-                yTitle={yTitle}
-                ariaLabel={title}
-              />
-            </>
-          )}
+        <>
+          <div ref={chartRef}>
+            {(mode === "bar" || mode === "line") && (
+              <>
+                {showLegend && <Legend items={legendItems} />}
+                <XYChart
+                  labels={chartLabels}
+                  series={chartSeries}
+                  overlay={chartOverlay}
+                  kind={mode}
+                  percent={percent}
+                  vary={vary && mode === "bar"}
+                  yTitle={yTitle}
+                  ariaLabel={title}
+                />
+              </>
+            )}
 
-          {mode === "pie" && <PieView ariaLabel={title} items={pieItems} />}
-        </div>
+            {mode === "pie" && <PieView ariaLabel={title} items={pieItems} />}
+          </div>
+
+          {/* PAGINASI */}
+          {paged && (
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <ChartPagination
+                current={safePage}
+                total={totalPages}
+                onChange={setPage}
+              />
+
+              <p
+                className="text-center text-[11.5px] leading-5 text-[#667360]"
+                aria-live="polite"
+              >
+                Menampilkan {from + 1}-{to} dari {labels.length}{" "}
+                {labelHeader.toLowerCase()}
+                {mode === "pie" &&
+                  ". Persentase dihitung dari data pada halaman ini."}
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {mode === "table" && (
         <DataTable
           rows={tableRows}
           columns={tableCols}
-          controls={false}
+          controls={paged}
           minWidth={420}
         />
       )}
@@ -1991,9 +2174,10 @@ const yearCols: Col<YearRow>[] = [
 
 type DosenRow = DosenItem;
 
+/* Kolom NIP dihapus: data peneliti berasal dari SINTA, yang tidak
+   menyediakan NIP. */
 const dosenCols: Col<DosenRow>[] = [
   { key: "name", header: "Nama", value: (r) => r.name, bold: true },
-  { key: "nip", header: "NIP", value: (r) => r.nip },
   { key: "prodi", header: "Prodi", value: (r) => r.prodi },
   {
     key: "all",
@@ -2326,7 +2510,8 @@ export default function InfografisPage() {
         const json = await res.json();
 
         if (!cancelled) {
-          setData({ ...EMPTY_DATA, ...(json.data ?? {}) });
+          /* data tanpa program studi ("-") dibuang di sini */
+          setData(sanitizeData({ ...EMPTY_DATA, ...(json.data ?? {}) }));
           setError("");
         }
       } catch (err) {
@@ -2394,11 +2579,11 @@ export default function InfografisPage() {
               STATISTIK
           ===================================================== */}
 
-          <section id="statistik" className="scroll-mt-20 bg-white py-16 md:py-20">
+          <section id="statistik" className="scroll-mt-24 bg-white py-16 md:py-20">
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <SectionTitle
-                eyebrow="Statistik P2M"
-                title="Statistik Keseluruhan P2M Polibatam"
+                eyebrow="Statistik P3M"
+                title="Statistik Keseluruhan P3M Polibatam"
                 description="Total penelitian, pengabdian, publikasi, dan HKI. Setiap grafik punya filter sendiri, bisa diganti tampilannya (garis, batang, atau data), dan diunduh sebagai gambar (PNG) atau data (CSV) sesuai filternya."
               />
 
@@ -2429,7 +2614,7 @@ export default function InfografisPage() {
                           return {
                             title:
                               "Total Penelitian, Pengabdian, Publikasi dan HKI",
-                            fileName: "total-p2m",
+                            fileName: "total-p3m",
                             labelHeader: "Kegiatan",
                             labels: [
                               "Penelitian",
@@ -2466,7 +2651,7 @@ export default function InfografisPage() {
                           return {
                             title:
                               "Penelitian, Pengabdian, Publikasi dan HKI Jurusan",
-                            fileName: "p2m-per-jurusan",
+                            fileName: "p3m-per-jurusan",
                             labelHeader: "Jurusan",
                             labels: stats.map((j) => j.name),
                             series: [
@@ -2633,7 +2818,9 @@ export default function InfografisPage() {
                     </Reveal>
                   </div>
 
-                  {/* ---------- PERBANDINGAN PER PRODI ---------- */}
+                  {/* ---------- PERBANDINGAN PER PRODI ----------
+                      Datanya bisa banyak, jadi dibagi per halaman
+                      (PRODI_PAGE_SIZE program studi per halaman). */}
                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                     <Reveal className="h-full">
                       <FilteredChart
@@ -2661,6 +2848,7 @@ export default function InfografisPage() {
                             vary: true,
                             modes: ["pie", "bar", "line", "table"],
                             defaultMode: "pie",
+                            pageSize: PRODI_PAGE_SIZE,
                           };
                         }}
                       />
@@ -2692,6 +2880,7 @@ export default function InfografisPage() {
                             vary: true,
                             modes: ["pie", "bar", "line", "table"],
                             defaultMode: "pie",
+                            pageSize: PRODI_PAGE_SIZE,
                           };
                         }}
                       />
@@ -2803,7 +2992,7 @@ export default function InfografisPage() {
                             <DataTable
                               rows={dosenRows}
                               columns={dosenCols}
-                              minWidth={720}
+                              minWidth={640}
                             />
                           </>
                         );

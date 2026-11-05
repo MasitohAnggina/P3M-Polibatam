@@ -6,33 +6,15 @@ import { Poppins } from "next/font/google";
 
 import { Settings } from "lucide-react";
 
-/* =========================================================
-   ADMIN: PENGATURAN
-   Letakkan di src/app/admin/pengaturan/page.tsx
-
-   Isi: Profil (nama + email), Ganti Kata Sandi, dan Kontak P2M.
-   Profil dan kata sandi memakai kolom yang sudah ada di tabel users
-   (name, email, password). Kontak P2M butuh tabel sendiri.
-
-   KONTRAK API (Laravel, Sanctum):
-   GET /api/user                          -> { name, email } (atau { data: {...} })
-   PUT /api/admin/pengaturan/profil       -> { name, email }
-   PUT /api/admin/pengaturan/password     -> { password_lama, password, password_confirmation }
-   GET /api/admin/pengaturan/kontak       -> { data: { alamat, email, telepon } }
-   PUT /api/admin/pengaturan/kontak       -> { alamat, email, telepon } -> { data: {...} }
-   Publik: GET /api/kontak                -> { data: { alamat, email, telepon } }
-   (dipakai halaman Profil P2M dan footer)
-========================================================= */
-
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   display: "swap",
 });
 
-/* =========================================================
-   API + TOKEN (sama dengan halaman admin lainnya)
-========================================================= */
+/* =====================
+   API + TOKEN 
+======================== */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -143,7 +125,7 @@ export default function AdminPengaturanPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordNotice, setPasswordNotice] = useState<Notice>(null);
 
-  /* ---------- KONTAK P2M ---------- */
+  /* ---------- KONTAK P3M ---------- */
 
   const [loadingKontak, setLoadingKontak] = useState(true);
   const [savedKontak, setSavedKontak] = useState({
@@ -247,7 +229,7 @@ export default function AdminPengaturanPage() {
     }
   };
 
-  /* ---------- KONTAK P2M ---------- */
+  /* ---------- KONTAK P3M ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -403,7 +385,7 @@ export default function AdminPengaturanPage() {
           </div>
 
           <p className="mt-2 text-[13px] leading-6 text-[#7A867F] sm:ml-[52px]">
-            Kelola akun admin dan kontak P2M.
+            Kelola akun admin dan kontak P3M.
           </p>
         </div>
 
@@ -506,8 +488,8 @@ export default function AdminPengaturanPage() {
             </div>
           </SettingsCard>
 
-          {/* KONTAK P2M */}
-          <SettingsCard title="Kontak P2M">
+          {/* KONTAK P3M */}
+          <SettingsCard title="Kontak P3M">
             <div className="grid gap-4">
               <FormField label="Alamat">
                 <textarea
@@ -515,7 +497,7 @@ export default function AdminPengaturanPage() {
                   onChange={(e) => setAlamat(e.target.value)}
                   disabled={loadingKontak || savingKontak}
                   rows={3}
-                  placeholder={loadingKontak ? "Memuat..." : "Alamat lengkap kantor P2M"}
+                  placeholder={loadingKontak ? "Memuat..." : "Alamat lengkap kantor P3M"}
                   className={textareaClass}
                 />
               </FormField>
@@ -526,7 +508,7 @@ export default function AdminPengaturanPage() {
                   value={kontakEmail}
                   onChange={(e) => setKontakEmail(e.target.value)}
                   disabled={loadingKontak || savingKontak}
-                  placeholder={loadingKontak ? "Memuat..." : "p2m@polibatam.ac.id"}
+                  placeholder={loadingKontak ? "Memuat..." : "p3m@polibatam.ac.id"}
                   className={inputClass}
                 />
                 {kontakEmailInvalid && (
@@ -546,7 +528,7 @@ export default function AdminPengaturanPage() {
                   className={inputClass}
                 />
                 <p className="mt-1 text-[11px] text-[#9AA49F]">
-                  Kontak ini tampil di halaman Profil P2M.
+                  Kontak ini tampil di halaman Profil P3M.
                 </p>
               </FormField>
 

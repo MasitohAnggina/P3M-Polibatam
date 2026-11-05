@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -19,7 +20,7 @@ import {
 
 /* =========================================================
    HALAMAN DOKUMEN & PANDUAN
-   Alamat  : /dokumen-panduan  (submenu Informasi di navbar)
+   Alamat  : /dokumen-dan-panduan  (submenu Informasi di navbar)
    Isi     : buku panduan, template, formulir, SK / surat edaran
              yang bisa diunduh. Tidak ada halaman detail; setiap
              kartu langsung membuka / mengunduh file.
@@ -37,6 +38,14 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
+
+/* Gradien hero (sama dengan hero halaman Penelitian) */
+const HERO_GRADIENT = [
+  "linear-gradient(180deg, rgba(10,28,5,0.35) 0%, rgba(10,28,5,0) 45%)",
+  "linear-gradient(135deg,#1B4010 0%,#2F5F1F 38%,#4C8E32 72%,#78B35A 100%)",
+].join(", ");
+
+const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
 /* =========================================================
    KONSTANTA & TIPE
@@ -165,6 +174,62 @@ function useInView<T extends HTMLElement>(
   }, [threshold, rootMargin]);
 
   return { ref, inView };
+}
+
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduce(query.matches);
+
+    const onChange = (e: MediaQueryListEvent) => setReduce(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return reduce;
+}
+
+function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (disabled) {
+      el.style.removeProperty("--p");
+      return;
+    }
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      const progress = Math.min(
+        Math.max(window.scrollY / Math.max(el.offsetTop + el.offsetHeight, 1), 0),
+        1
+      );
+      el.style.setProperty("--p", progress.toFixed(3));
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [disabled]);
+
+  return ref;
 }
 
 /* =========================================================
@@ -473,6 +538,9 @@ export default function DokumenPanduanPage() {
   const [category, setCategory] = useState<string>(ALL_CATEGORIES);
   const [year, setYear] = useState<string>(ALL_YEARS);
 
+  const reduceMotion = usePrefersReducedMotion();
+  const heroRef = useHeroScroll<HTMLElement>(reduceMotion);
+
   /* data dokumen dari API */
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -566,41 +634,39 @@ export default function DokumenPanduanPage() {
 
   return (
     <main
-      className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+      className={`${poppins.className} -mt-[72px] overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
       <ScrollProgress />
 
       {/* =====================================================
-          HERO (sama dengan hero halaman Informasi)
+          HERO (sama dengan hero halaman Penelitian)
       ====================================================== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white">
-        {/* cahaya hijau lembut */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#8DC26F]/20 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl"
-        />
-
-        <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+      <section
+        ref={heroRef}
+        className="hero-bg relative overflow-hidden pt-[72px] text-white"
+        style={{ backgroundImage: HERO_GRADIENT }}
+      >
+        <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
           <div className="mx-auto max-w-[720px]">
-            <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
-              Dokumen &amp; Panduan
+            <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
+              {"Dokumen & Panduan".split(" ").map((word, index) => (
+                <span key={`${word}-${index}`}>
+                  <span className="kata" style={delayStyle(120 + index * 80)}>
+                    {word}
+                  </span>{" "}
+                </span>
+              ))}
             </h1>
 
-            <p className="mx-auto mt-5 max-w-[580px] text-[14px] font-normal leading-[1.8] text-white/85 sm:text-[15px]">
-              Buku panduan, template, formulir, dan dokumen resmi P2M yang
+            <p
+              className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+              style={delayStyle(320)}
+            >
+              Buku panduan, template, formulir, dan dokumen resmi P3M yang
               dapat diunduh untuk mendukung kegiatan penelitian dan pengabdian.
             </p>
           </div>
         </div>
-
-        <div
-          aria-hidden
-          className="absolute bottom-0 left-0 h-[3px] w-full bg-gradient-to-r from-[#31551F] via-[#8DC26F] to-[#31551F]"
-        />
       </section>
 
       {/* =====================================================
@@ -609,7 +675,7 @@ export default function DokumenPanduanPage() {
       <section id="dokumen" className="scroll-mt-20 bg-white py-20 md:py-28">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
-            eyebrow="Unduhan P2M"
+            eyebrow="Unduhan P3M"
             title="Daftar Dokumen"
             description="Unduh buku panduan, template, formulir, dan dokumen resmi untuk pengusulan serta pelaksanaan penelitian dan pengabdian."
           />
@@ -733,15 +799,46 @@ export default function DokumenPanduanPage() {
         </div>
       </section>
 
+      {/* =====================================================
+          ANIMASI (sama dengan Beranda dan Penelitian)
+      ====================================================== */}
+
       <style>{`
         html {
           scroll-behavior: smooth;
         }
 
+        .timbul {
+          animation: timbul 650ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes timbul {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .kata {
+          display: inline-block;
+          animation: kata 750ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes kata {
+          from { opacity: 0; transform: translateY(0.45em); filter: blur(6px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        .hero-content {
+          transform: translate3d(0, calc(var(--p, 0) * 70px), 0);
+          opacity: max(0, calc(1 - var(--p, 0) * 1.25));
+          will-change: transform, opacity;
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          html {
-            scroll-behavior: auto;
-          }
+          html { scroll-behavior: auto; }
+          .timbul, .kata { animation: none; }
+          .hero-content { transform: none; opacity: 1; }
         }
       `}</style>
     </main>

@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -33,6 +34,25 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
+
+/* gradasi hero (sama dengan Beranda dan Profil): halus dan satu arah,
+   hijau tua di kiri atas makin terang ke kanan bawah. Lapisan kedua
+   hanya menggelapkan bagian atas sedikit supaya teks putih navbar tetap
+   terbaca.
+
+   HERO: gaya sama dengan halaman Profil. Navbar (setinggi 72px)
+   transparan di atas hero, jadi <main> diberi -mt-[72px] dan hero diberi
+   pt-[72px]. Itu hanya berlaku di tampilan DAFTAR. Tampilan DETAIL dan
+   tampilan "memuat" tidak punya hero, jadi di sana main tidak digeser dan
+   navbar putih biasa. Halaman ini harus terdaftar di HERO_PATHS dan
+   DETAIL_PATHS pada Navbar.tsx ("/hki/hki"). */
+const HERO_GRADIENT = [
+  "linear-gradient(180deg, rgba(10,28,5,0.35) 0%, rgba(10,28,5,0) 45%)",
+  "linear-gradient(135deg,#1B4010 0%,#2F5F1F 38%,#4C8E32 72%,#78B35A 100%)",
+].join(", ");
+
+/* set CSS variable --d (delay animasi) tanpa error TypeScript */
+const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
 /* =========================================================
    PALET WARNA (sama dengan Beranda)
@@ -153,6 +173,7 @@ const hkiTypes = [
   "Paten",
   "Paten Sederhana",
   "Desain Industri",
+  "Merek",
 ];
 
 /* =========================================================
@@ -185,6 +206,72 @@ function useInView<T extends HTMLElement>(
   }, [threshold, rootMargin]);
 
   return { ref, inView };
+}
+
+/* Pengguna yang mematikan animasi di perangkatnya: animasi hero
+   yang mengikuti scroll ikut dimatikan. */
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduce(query.matches);
+
+    const onChange = (e: MediaQueryListEvent) => setReduce(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return reduce;
+}
+
+/* Animasi hero yang mengikuti scroll (sama dengan Beranda dan Profil).
+   Mengisi variabel CSS --p (0 = hero di posisi awal, 1 = hero sudah
+   terscroll habis) pada elemen hero. Nilainya langsung ditulis ke DOM
+   (bukan state), jadi halaman tidak dirender ulang tiap scroll.
+   `disabled` = true saat hero tidak tampil (tampilan detail) atau saat
+   pengguna mematikan animasi. */
+function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (disabled) {
+      el.style.removeProperty("--p");
+      return;
+    }
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      /* hero belum tentu di paling atas halaman (ada navbar di atasnya),
+         jadi tinggi yang dipakai = posisi atas + tinggi hero */
+      const progress = Math.min(
+        Math.max(window.scrollY / Math.max(el.offsetTop + el.offsetHeight, 1), 0),
+        1
+      );
+      el.style.setProperty("--p", progress.toFixed(3));
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [disabled]);
+
+  return ref;
 }
 
 /* =========================================================
@@ -241,7 +328,7 @@ function ScrollProgress() {
     <div className="pointer-events-none fixed left-0 top-0 z-[60] h-[3px] w-full">
       <div
         ref={barRef}
-        className="h-full origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F]"
+        className="h-full origin-left scale-x-0 bg-[#31551F]"
       />
     </div>
   );
@@ -659,6 +746,10 @@ export default function HKIPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const prevSelected = useRef<string | null>(null);
 
+  /* animasi hero (hanya di tampilan daftar, yang punya hero) */
+  const reduceMotion = usePrefersReducedMotion();
+  const heroRef = useHeroScroll<HTMLElement>(reduceMotion || selectedId !== null);
+
   /* ambil data dari API */
   useEffect(() => {
     const controller = new AbortController();
@@ -785,9 +876,14 @@ export default function HKIPage() {
     setPage(1);
   };
 
+  /* hero hanya ada di tampilan daftar (bukan "memuat" dan bukan detail) */
+  const showHero = !(selectedId && loading) && !selected;
+
   return (
     <main
-      className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+      className={`${poppins.className} ${
+        showHero ? "-mt-[72px]" : ""
+      } overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
       <ScrollProgress />
 
@@ -807,25 +903,36 @@ export default function HKIPage() {
           {/* =====================================================
               HERO
           ===================================================== */}
-          <section className="relative overflow-hidden bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white">
-            {/* cahaya hijau lembut */}
-            <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#8DC26F]/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl" />
-
-            <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+          <section
+            ref={heroRef}
+            className="hero-bg relative overflow-hidden pt-[72px] text-white"
+            style={{ backgroundImage: HERO_GRADIENT }}
+          >
+            <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
               <div className="mx-auto max-w-[720px]">
-                <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
-                  HKI
+                {/* judul muncul kata demi kata */}
+                <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
+                  {"HKI".split(" ").map((word, index) => (
+                    <span key={`${word}-${index}`}>
+                      <span
+                        className="kata"
+                        style={delayStyle(120 + index * 80)}
+                      >
+                        {word}
+                      </span>{" "}
+                    </span>
+                  ))}
                 </h1>
 
-                <p className="mx-auto mt-5 max-w-[580px] text-[14px] font-normal leading-[1.8] text-white/85 sm:text-[15px]">
+                <p
+                  className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+                  style={delayStyle(320)}
+                >
                   Informasi dan data Hak Kekayaan Intelektual yang dikelola oleh
-                  P2M Politeknik Negeri Batam.
+                  P3M Politeknik Negeri Batam.
                 </p>
               </div>
             </div>
-
-            <div className="absolute bottom-0 left-0 h-[3px] w-full bg-gradient-to-r from-[#31551F] via-[#8DC26F] to-[#31551F]" />
           </section>
 
           {/* =====================================================
@@ -1086,7 +1193,7 @@ export default function HKIPage() {
                       </h2>
 
                       <p className="mt-2 text-[13px] leading-[1.7] text-white/80">
-                        Akses sistem informasi P2M untuk memperoleh informasi dan
+                        Akses sistem informasi P3M untuk memperoleh informasi dan
                         melakukan proses pendaftaran Hak Kekayaan Intelektual.
                       </p>
                     </div>
@@ -1135,9 +1242,68 @@ export default function HKIPage() {
           scroll-behavior: smooth;
         }
 
+        /* ANIMASI HERO (sama dengan Beranda dan Profil) */
+
+        /* isi hero muncul dari bawah saat halaman dibuka */
+        .timbul {
+          animation: timbul 650ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes timbul {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* judul hero: tiap kata naik sambil menajam */
+        .kata {
+          display: inline-block;
+          animation: kata 750ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes kata {
+          from {
+            opacity: 0;
+            transform: translateY(0.45em);
+            filter: blur(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
+        }
+
+        /* ANIMASI HERO SAAT SCROLL
+           --p = 0 (awal) sampai 1 (hero terscroll habis), diisi oleh
+           useHeroScroll. Tanpa animasi berulang: kalau scroll berhenti,
+           semuanya diam. */
+        .hero-content {
+          transform: translate3d(0, calc(var(--p, 0) * 70px), 0);
+          opacity: max(0, calc(1 - var(--p, 0) * 1.25));
+          will-change: transform, opacity;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           html {
             scroll-behavior: auto;
+          }
+
+          .timbul,
+          .kata {
+            animation: none;
+          }
+
+          .hero-content {
+            transform: none;
+            opacity: 1;
           }
         }
       `}</style>

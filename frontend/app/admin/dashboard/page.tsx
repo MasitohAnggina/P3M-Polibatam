@@ -342,7 +342,7 @@ export default function DashboardPage() {
             </div>
 
             <p className="mt-2 text-[12.5px] leading-5 text-[#7A867F] sm:ml-[52px] sm:text-[13px] sm:leading-6">
-              Ringkasan data pengelolaan P2M Politeknik Negeri Batam.
+              Ringkasan data pengelolaan P3M Politeknik Negeri Batam.
             </p>
           </div>
 
@@ -1104,7 +1104,7 @@ function SystemInformation({ updatedAt }: { updatedAt: string | null }) {
         <p className="text-[13px] font-medium text-[#33423A]">Informasi Sistem</p>
 
         <p className="mt-1 text-[12px] leading-5 text-[#6E7A73]">
-          Dashboard menampilkan ringkasan data yang dikelola pada sistem P2M
+          Dashboard menampilkan ringkasan data yang dikelola pada sistem P3M
           Polibatam. Gunakan menu di sidebar untuk menambah, mengubah, melihat,
           atau menghapus data.
         </p>

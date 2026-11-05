@@ -13,7 +13,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "P2M Polibatam",
+  title: "P3M Polibatam",
   description:
     "Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik Negeri Batam",
 };

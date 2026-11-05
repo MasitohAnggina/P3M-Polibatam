@@ -199,7 +199,7 @@ export default function StatistikPage() {
               </div>
 
               <h1 className="text-[26px] font-medium tracking-[-0.02em] sm:text-[32px]">
-                Statistik P2M
+                Statistik P3M
               </h1>
             </div>
 

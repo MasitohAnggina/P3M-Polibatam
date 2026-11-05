@@ -22,7 +22,7 @@ const pageInfo: Record<
 > = {
   "/admin": {
     title: "DASHBOARD",
-    subtitle: "Ringkasan dan informasi sistem P2M Polibatam.",
+    subtitle: "Ringkasan dan informasi sistem P3M Polibatam.",
   },
 
   "/admin/penelitian": {
@@ -52,12 +52,12 @@ const pageInfo: Record<
 
   "/admin/profil": {
     title: "PROFIL",
-    subtitle: "Kelola informasi profil P2M Polibatam.",
+    subtitle: "Kelola informasi profil P3M Polibatam.",
   },
 
   "/admin/pengaturan": {
     title: "PENGATURAN",
-    subtitle: "Kelola pengaturan akun dan sistem P2M.",
+    subtitle: "Kelola pengaturan akun dan sistem P3M.",
   },
 };
 

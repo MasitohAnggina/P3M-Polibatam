@@ -3,7 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Poppins } from "next/font/google";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 import {
   ChevronRight,
@@ -55,6 +61,15 @@ const poppins = Poppins({
    isi          : 14 (leading 1.75)
    label/meta   : 10.5-13
 
+   HERO
+   Gaya hero (gradasi, bobot huruf, animasi, navbar transparan)
+   disamakan dengan hero Beranda. Ukurannya tetap lebih ringkas
+   karena ini halaman dalam. Navbar (setinggi 72px) transparan di
+   atas hero, jadi <main> diberi -mt-[72px] dan hero diberi
+   pt-[72px] supaya gradasi hero tampil di belakang navbar. Isi hero
+   tetap di posisi yang sama seperti sebelumnya. Halaman ini harus
+   terdaftar di HERO_PATHS pada Navbar.tsx.
+
    ATURAN FOTO (untuk halaman ini dan form upload nanti)
    format       : PNG atau JPG/JPEG
    foto struktur: rasio 4:3, minimal 1280 x 960 px
@@ -62,6 +77,15 @@ const poppins = Poppins({
    ukuran file  : maksimal 5 MB
    Validasi resolusi dilakukan di backend saat upload.
 ========================================================= */
+
+/* gradasi hero (sama dengan Beranda): halus dan satu arah, hijau tua
+   di kiri atas makin terang ke kanan bawah. Lapisan kedua hanya
+   menggelapkan bagian atas sedikit supaya teks putih navbar tetap
+   terbaca. */
+const HERO_GRADIENT = [
+  "linear-gradient(180deg, rgba(10,28,5,0.35) 0%, rgba(10,28,5,0) 45%)",
+  "linear-gradient(135deg,#1B4010 0%,#2F5F1F 38%,#4C8E32 72%,#78B35A 100%)",
+].join(", ");
 
 /* =========================================================
    API
@@ -97,7 +121,7 @@ type ApiMember = {
 
 /* DRAFT visi dan misi, disusun dari tupoksi P3M, Renstra, dan
    Polibatam University Berdampak. Perlu diverifikasi ke pimpinan
-   P2M sebelum rilis. */
+   P3M sebelum rilis. */
 const visi =
   "Menjadi pusat penelitian dan pengabdian kepada masyarakat vokasi yang unggul, inovatif, dan berdampak nyata bagi masyarakat, industri, dan pembangunan berkelanjutan.";
 
@@ -143,9 +167,16 @@ type Kontak = {
 const DEFAULT_KONTAK: Kontak = {
   alamat:
     "Politeknik Negeri Batam, Jl. Ahmad Yani, Tlk. Tering, Batam Kota, Kepulauan Riau 29461",
-  email: "p2m@polibatam.ac.id",
+  email: "p3m@polibatam.ac.id",
   telepon: "0822-1199-6677",
 };
+
+/* =========================================================
+   HELPER
+========================================================= */
+
+/* set CSS variable --d (delay animasi) tanpa error TypeScript */
+const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
 /* =========================================================
    HOOKS
@@ -177,6 +208,70 @@ function useInView<T extends HTMLElement>(
   }, [threshold, rootMargin]);
 
   return { ref, inView };
+}
+
+/* Pengguna yang mematikan animasi di perangkatnya: animasi hero
+   yang mengikuti scroll ikut dimatikan. */
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduce(query.matches);
+
+    const onChange = (e: MediaQueryListEvent) => setReduce(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return reduce;
+}
+
+/* Animasi hero yang mengikuti scroll (sama dengan Beranda).
+   Mengisi variabel CSS --p (0 = hero di posisi awal, 1 = hero sudah
+   terscroll habis) pada elemen hero. Nilainya langsung ditulis ke DOM
+   (bukan state), jadi halaman tidak dirender ulang tiap scroll. */
+function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (disabled) {
+      el.style.removeProperty("--p");
+      return;
+    }
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      /* hero belum tentu di paling atas halaman (ada navbar di atasnya),
+         jadi tinggi yang dipakai = posisi atas + tinggi hero */
+      const progress = Math.min(
+        Math.max(window.scrollY / Math.max(el.offsetTop + el.offsetHeight, 1), 0),
+        1
+      );
+      el.style.setProperty("--p", progress.toFixed(3));
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [disabled]);
+
+  return ref;
 }
 
 /* =========================================================
@@ -259,6 +354,9 @@ function SectionTitle({ title }: { title: string }) {
 ========================================================= */
 
 export default function ProfilPage() {
+  const reduceMotion = usePrefersReducedMotion();
+  const heroRef = useHeroScroll<HTMLElement>(reduceMotion);
+
   /* Struktur organisasi diambil dari backend/database.
      Urutan tampil mengikuti kolom urutan dari API. */
   const [organization, setOrganization] = useState<OrganizationMember[]>([]);
@@ -303,7 +401,7 @@ export default function ProfilPage() {
     };
   }, []);
 
-  /* Kontak P2M diambil dari backend (diatur di Admin > Pengaturan). */
+  /* Kontak P3M diambil dari backend (diatur di Admin > Pengaturan). */
   const [kontakData, setKontakData] = useState<Kontak>(DEFAULT_KONTAK);
 
   useEffect(() => {
@@ -346,28 +444,45 @@ export default function ProfilPage() {
     { icon: Phone, label: "Telepon", value: kontakData.telepon },
   ];
 
+  const heroTitle = "Profil";
+
   return (
     <main
-      className={`${poppins.className} overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+      className={`${poppins.className} -mt-[72px] overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
       <ScrollProgress />
 
       {/* =====================================================
           HERO
+          gaya sama dengan hero Beranda: gradasi hijau, judul
+          muncul kata demi kata saat dibuka, lalu isi bergeser dan
+          memudar pelan saat di-scroll. Ukuran tetap ringkas.
+          pt-[72px] = tinggi navbar (main digeser naik 72px supaya
+          hero ada di belakang navbar yang transparan).
       ===================================================== */}
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white">
-        {/* cahaya hijau lembut */}
-        <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#8DC26F]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/15 blur-3xl" />
-
-        <div className="relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+      <section
+        ref={heroRef}
+        className="hero-bg relative overflow-hidden pt-[72px] text-white"
+        style={{ backgroundImage: HERO_GRADIENT }}
+      >
+        <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
           <div className="mx-auto max-w-[720px]">
-            <h1 className="text-[36px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-[44px] md:text-[52px]">
-              Profil
+            {/* judul muncul kata demi kata */}
+            <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
+              {heroTitle.split(" ").map((word, index) => (
+                <span key={`${word}-${index}`}>
+                  <span className="kata" style={delayStyle(120 + index * 80)}>
+                    {word}
+                  </span>{" "}
+                </span>
+              ))}
             </h1>
 
-            <p className="mx-auto mt-5 max-w-[580px] text-[14px] font-normal leading-[1.8] text-white/85 sm:text-[15px]">
+            <p
+              className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+              style={delayStyle(320)}
+            >
               Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik
               Negeri Batam yang berperan dalam mendukung kegiatan penelitian,
               pengabdian kepada masyarakat, publikasi, dan pengembangan
@@ -375,12 +490,10 @@ export default function ProfilPage() {
             </p>
           </div>
         </div>
-
-        <div className="absolute bottom-0 left-0 h-[3px] w-full bg-gradient-to-r from-[#31551F] via-[#8DC26F] to-[#31551F]" />
       </section>
 
       {/* =====================================================
-          TENTANG P2M
+          TENTANG P3M
       ===================================================== */}
       <section id="tentang" className="scroll-mt-20 bg-white py-20 md:py-28">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
@@ -396,9 +509,9 @@ export default function ProfilPage() {
 
           <Reveal delay={100} className="mt-5">
             <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-              Pusat Penelitian dan Pengabdian kepada Masyarakat (P2M) merupakan
+              Pusat Penelitian dan Pengabdian kepada Masyarakat (P3M) merupakan
               unsur pembantu pimpinan di Politeknik Negeri Batam yang
-              bertanggung jawab langsung kepada Direktur. P2M berperan
+              bertanggung jawab langsung kepada Direktur. P3M berperan
               mengoordinasikan pelaksanaan penelitian, pengabdian kepada
               masyarakat, publikasi ilmiah, serta pengembangan inovasi di
               lingkungan Politeknik Negeri Batam.
@@ -407,7 +520,7 @@ export default function ProfilPage() {
 
           <Reveal delay={200} className="mt-4">
             <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-              P2M mendorong terciptanya kegiatan penelitian dan pengabdian yang
+              P3M mendorong terciptanya kegiatan penelitian dan pengabdian yang
               berkualitas serta memberikan manfaat dan dampak nyata bagi
               masyarakat, industri, dan pembangunan.
             </p>
@@ -660,7 +773,7 @@ export default function ProfilPage() {
         className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
-          <SectionTitle title="Kontak P2M" />
+          <SectionTitle title="Kontak P3M" />
 
           <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
             {/* KARTU KONTAK */}
@@ -743,9 +856,68 @@ export default function ProfilPage() {
           scroll-behavior: smooth;
         }
 
+        /* ANIMASI HERO (sama dengan Beranda) */
+
+        /* isi hero muncul dari bawah saat halaman dibuka */
+        .timbul {
+          animation: timbul 650ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes timbul {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* judul hero: tiap kata naik sambil menajam */
+        .kata {
+          display: inline-block;
+          animation: kata 750ms cubic-bezier(.22,1,.36,1) both;
+          animation-delay: var(--d, 0ms);
+        }
+
+        @keyframes kata {
+          from {
+            opacity: 0;
+            transform: translateY(0.45em);
+            filter: blur(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
+        }
+
+        /* ANIMASI HERO SAAT SCROLL
+           --p = 0 (awal) sampai 1 (hero terscroll habis), diisi oleh
+           useHeroScroll. Tanpa animasi berulang: kalau scroll berhenti,
+           semuanya diam. */
+        .hero-content {
+          transform: translate3d(0, calc(var(--p, 0) * 70px), 0);
+          opacity: max(0, calc(1 - var(--p, 0) * 1.25));
+          will-change: transform, opacity;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           html {
             scroll-behavior: auto;
+          }
+
+          .timbul,
+          .kata {
+            animation: none;
+          }
+
+          .hero-content {
+            transform: none;
+            opacity: 1;
           }
         }
       `}</style>

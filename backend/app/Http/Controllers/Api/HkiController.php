@@ -14,7 +14,7 @@ class HkiController extends Controller
 {
     private const GAMBAR_DIR = 'hki';
 
-    private const JENIS = ['Hak Cipta', 'Paten', 'Paten Sederhana', 'Desain Industri'];
+    private const JENIS = ['Hak Cipta', 'Paten', 'Paten Sederhana', 'Desain Industri', 'Merek'];
 
     /* Publik (/api/hki) dan admin (/api/admin/hki): terbaru di atas */
     public function index(): JsonResponse

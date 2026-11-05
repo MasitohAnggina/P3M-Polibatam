@@ -772,7 +772,7 @@ export default function AdminInformasiPage() {
 
             <p className="mt-2 text-[13px] leading-6 text-[#7A867F] sm:ml-[52px]">
               Kelola informasi, kegiatan, dan panduan yang ditampilkan pada
-              halaman informasi P2M.
+              halaman informasi P3M.
             </p>
           </div>
 

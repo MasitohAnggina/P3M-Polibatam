@@ -20,7 +20,7 @@ const BEFORE_PROFIL: NavItem[] = [{ label: "Beranda", href: "/" }];
 
 /* Profil sekarang punya sub menu */
 const PROFIL_SUBMENU: NavItem[] = [
-  { label: "Profil P2M", href: "/profil" },
+  { label: "Profil P3M", href: "/profil" },
   { label: "Profil Peneliti", href: "/profil-peneliti" },
 ];
 
@@ -63,6 +63,47 @@ type Language = (typeof LANGUAGES)[number];
 
 /* sama dengan MIN_HURUF di PencarianController */
 const SEARCH_MIN_CHARS = 2;
+
+/* Halaman yang heronya berada di belakang navbar. Di halaman ini
+   navbar transparan (teks dan logo putih) selama masih di paling atas,
+   lalu jadi putih setelah di-scroll. Halaman yang ditambahkan di sini
+   harus memakai -mt-[72px] pada <main> dan pt-[72px] pada heronya
+   (lihat Beranda, Profil, Profil Peneliti, Penelitian, Pengabdian,
+   Pendaftaran HKI, HKI, Publikasi, dan Informasi).
+   Halaman lain memakai navbar putih biasa.
+
+   Khusus /penelitian, /pengabdian, /hki/hki, /publikasi, dan /informasi:
+   tampilan detail (alamat #detail-<id>) tidak punya hero, jadi di sana
+   navbar tetap putih. */
+const HERO_PATHS = [
+  "/",
+  "/profil",
+  "/profil-peneliti",
+  "/penelitian",
+  "/pengabdian",
+  "/hki/pendaftaran",
+  "/hki/hki",
+  "/publikasi",
+  "/informasi",
+];
+
+/* halaman yang punya tampilan detail tanpa hero */
+const DETAIL_PATHS = [
+  "/penelitian",
+  "/pengabdian",
+  "/hki/hki",
+  "/publikasi",
+  "/informasi",
+];
+
+/* awalan hash untuk tampilan detail */
+const DETAIL_HASH = "#detail-";
+
+/* buang slash di akhir ("/profil-peneliti/" -> "/profil-peneliti")
+   supaya pencocokan path selalu konsisten */
+function normalizePath(path: string) {
+  return path.replace(/\/+$/, "") || "/";
+}
 
 /* =========================================================
    BENDERA (SVG, tanpa file gambar)
@@ -244,25 +285,39 @@ function loadGoogleTranslate() {
 
 /* =========================================================
    KOMPONEN KECIL (dipakai ulang oleh Profil, HKI, Informasi)
-
-   Ukuran responsif:
-   - lg (1024-1279px) : padding dan huruf dipadatkan supaya muat
-   - xl (>= 1280px)   : ukuran penuh
 ========================================================= */
 
 /* link biasa di navbar desktop */
-function DesktopLink({ item, active }: { item: NavItem; active: boolean }) {
+function DesktopLink({
+  item,
+  active,
+  onDark = false,
+}: {
+  item: NavItem;
+  active: boolean;
+  onDark?: boolean;
+}) {
   return (
     <Link
       href={item.href}
       className={`relative whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors ${
-        active ? "text-[#2E7D32]" : "text-[#4B554E] hover:text-[#2E7D32]"
+        onDark
+          ? active
+            ? "text-white"
+            : "text-white/85 hover:text-white"
+          : active
+            ? "text-[#2E7D32]"
+            : "text-[#4B554E] hover:text-[#2E7D32]"
       }`}
     >
       {item.label}
 
       {active && (
-        <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#2E7D32]" />
+        <span
+          className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${
+            onDark ? "bg-white" : "bg-[#2E7D32]"
+          }`}
+        />
       )}
     </Link>
   );
@@ -281,6 +336,7 @@ function DesktopDropdown({
   onClose,
   onToggle,
   align = "right",
+  onDark = false,
 }: {
   label: string;
   items: NavItem[];
@@ -290,6 +346,7 @@ function DesktopDropdown({
   onClose: () => void;
   onToggle: () => void;
   align?: "left" | "right";
+  onDark?: boolean;
 }) {
   const active = items.some((item) => item.href === pathname);
 
@@ -310,8 +367,14 @@ function DesktopDropdown({
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`relative flex items-center gap-1 whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors hover:text-[#2E7D32] ${
-          active || open ? "text-[#2E7D32]" : "text-[#4B554E]"
+        className={`relative flex items-center gap-1 whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors ${
+          onDark
+            ? active || open
+              ? "text-white"
+              : "text-white/85 hover:text-white"
+            : active || open
+              ? "text-[#2E7D32]"
+              : "text-[#4B554E] hover:text-[#2E7D32]"
         }`}
       >
         {label}
@@ -323,7 +386,11 @@ function DesktopDropdown({
         />
 
         {active && (
-          <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#2E7D32]" />
+          <span
+            className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${
+              onDark ? "bg-white" : "bg-[#2E7D32]"
+            }`}
+          />
         )}
       </button>
 
@@ -336,7 +403,7 @@ function DesktopDropdown({
             : "invisible translate-y-2 opacity-0"
         }`}
       >
-        <div className="rounded-md border border-[#E1E6E1] bg-white py-2 shadow-[0_12px_35px_rgba(0,0,0,0.08)]">
+        <div className="rounded-xl border border-[#E1E6E1] bg-white py-2 shadow-[0_12px_35px_rgba(0,0,0,0.10)]">
           {items.map((item) => (
             <Link
               key={item.href}
@@ -423,15 +490,26 @@ function MobileGroup({
 }
 
 /* =========================================================
-   NAVBAR
-   Menu desktop tampil mulai lebar 1180px dengan SATU ukuran saja
+   NAVBAR (polos, tinggi 72px)
+
+   Di halaman dalam HERO_PATHS (Beranda, Profil, Profil Peneliti,
+   Penelitian, Pengabdian, Pendaftaran HKI, HKI, Publikasi, dan
+   Informasi) navbar transparan dan tampil di atas hero: teks putih,
+   logo putih, kolom search dan bahasa berbingkai putih. Setelah halaman
+   digulir sedikit, navbar berubah jadi putih dengan teks gelap. Di
+   HALAMAN LAIN navbar selalu putih.
+
+   Supaya hero tampil di belakang navbar, <main> di halaman itu diberi
+   -mt-[72px] dan hero diberi pt-[72px] (lihat Beranda, Profil, dan
+   Profil Peneliti).
+
+   Menu desktop tampil mulai lebar 1180px dengan satu ukuran saja
    (huruf 13px, padding px-3, search 150px, logo 38px), jadi tampilannya
-   sama di Chrome dan Edge. Kolom search boleh menyusut sedikit di
-   lebar 1180-1240px. Di bawah 1180px dipakai tombol menu (hamburger).
+   sama di Chrome dan Edge. Di bawah 1180px dipakai tombol menu (hamburger).
 ========================================================= */
 
 export default function Navbar() {
-  const pathname = usePathname() ?? "";
+  const pathname = normalizePath(usePathname() ?? "");
   const router = useRouter();
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -448,6 +526,36 @@ export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const navRef = useRef<HTMLElement>(null);
+
+  /* sudah digulir? (dipakai untuk mengubah navbar hero jadi putih) */
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* tampilan detail (#detail-<id>) tidak punya hero */
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  useEffect(() => {
+    const readHash = () =>
+      setDetailOpen(window.location.hash.startsWith(DETAIL_HASH));
+
+    readHash();
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
+  }, [pathname]);
+
+  /* true = navbar transparan di atas hero (teks putih) */
+  const onHero =
+    HERO_PATHS.includes(pathname) &&
+    !(DETAIL_PATHS.includes(pathname) && detailOpen) &&
+    !scrolled &&
+    !mobileOpen;
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -538,305 +646,365 @@ export default function Navbar() {
 
   return (
     <header
-      className={`${poppins.className} sticky top-0 z-50 border-b border-[#E5E7E5] bg-white/95 backdrop-blur-md`}
+      className={`${poppins.className} sticky top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+        onHero
+          ? "border-transparent bg-transparent"
+          : `border-[#E5E7E5] bg-white/95 backdrop-blur-md ${
+              scrolled ? "shadow-[0_6px_24px_rgba(31,42,26,0.06)]" : ""
+            }`
+      }`}
     >
-      <div className="mx-auto flex h-[72px] max-w-[1240px] items-center px-5 md:px-7">
-        {/* =====================================================
-            LOGO
-        ===================================================== */}
-        <Link href="/" className="shrink-0">
-          <Image
-            src="/img/logo-polibatam3.png"
-            alt="Politeknik Negeri Batam"
-            width={155}
-            height={40}
-            priority
-            className="h-[38px] w-auto object-contain"
-          />
-        </Link>
-
-        {/* =====================================================
-            DESKTOP NAV (mulai lg / 1024px)
-        ===================================================== */}
-        <nav ref={navRef} className="ml-auto hidden items-center gap-1 pl-6 min-[1180px]:flex">
-          {BEFORE_PROFIL.map((item) => (
-            <DesktopLink key={item.href} item={item} active={pathname === item.href} />
-          ))}
-
-          {/* PROFIL (dengan sub menu) */}
-          <DesktopDropdown
-            label="Profil"
-            items={PROFIL_SUBMENU}
-            pathname={pathname}
-            open={openMenu === "Profil"}
-            onOpen={() => openDropdown("Profil")}
-            onClose={() => closeDropdown("Profil")}
-            onToggle={() => toggleDropdown("Profil")}
-            align="left"
-          />
-
-          {BEFORE_HKI.map((item) => (
-            <DesktopLink key={item.href} item={item} active={pathname === item.href} />
-          ))}
-
-          {/* HKI (dengan sub menu) */}
-          <DesktopDropdown
-            label="HKI"
-            items={HKI_SUBMENU}
-            pathname={pathname}
-            open={openMenu === "HKI"}
-            onOpen={() => openDropdown("HKI")}
-            onClose={() => closeDropdown("HKI")}
-            onToggle={() => toggleDropdown("HKI")}
-          />
-
-          {AFTER_HKI.map((item) => (
-            <DesktopLink key={item.href} item={item} active={pathname === item.href} />
-          ))}
-
-          {/* INFORMASI (dengan sub menu) */}
-          <DesktopDropdown
-            label="Informasi"
-            items={INFORMASI_SUBMENU}
-            pathname={pathname}
-            open={openMenu === "Informasi"}
-            onOpen={() => openDropdown("Informasi")}
-            onClose={() => closeDropdown("Informasi")}
-            onToggle={() => toggleDropdown("Informasi")}
-          />
-
-          {AFTER_INFORMASI.map((item) => (
-            <DesktopLink key={item.href} item={item} active={pathname === item.href} />
-          ))}
-
-          {/* ===================================================
-              SEARCH
-          =================================================== */}
-          <form
-            onSubmit={submitSearch}
-            role="search"
-            className="ml-3 flex h-[36px] w-[150px] items-center border-l border-[#E5E7E5] pl-4"
-          >
-            <button
-              type="submit"
-              aria-label="Cari"
-              className="mr-2 text-[#879088] transition-colors hover:text-[#2E7D32]"
-            >
-              <Search size={15} strokeWidth={1.7} />
-            </button>
-
-            <input
-              id="cari-desktop"
-              name="q"
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari..."
-              aria-label="Cari"
-              autoComplete="off"
-              enterKeyHint="search"
-              className="w-full min-w-0 bg-transparent text-[12px] text-[#465049] outline-none placeholder:text-[#9BA39D]"
-            />
-          </form>
-
-          {/* ===================================================
-              LANGUAGE DROPDOWN
-          =================================================== */}
-          <div
-            className="relative ml-3"
-            translate="no"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setOpenMenu(null);
-                setLanguageOpen((prev) => !prev);
-              }}
-              aria-expanded={languageOpen}
-              aria-haspopup="menu"
-              className={`flex h-[36px] items-center gap-2 border-l border-[#E5E7E5] pl-4 text-[12px] font-medium transition-colors hover:text-[#2E7D32] ${
-                languageOpen ? "text-[#2E7D32]" : "text-[#4B554E]"
+      <div className="mx-auto max-w-[1240px]">
+        <div className="flex h-[72px] items-center px-5 md:px-7">
+          {/* =====================================================
+              LOGO
+          ===================================================== */}
+          <Link href="/" className="shrink-0">
+            <Image
+              src="/img/logo-polibatam3.png"
+              alt="Politeknik Negeri Batam"
+              width={155}
+              height={40}
+              priority
+              className={`h-[38px] w-auto object-contain transition-[filter] duration-300 ${
+                onHero ? "brightness-0 invert" : ""
               }`}
-            >
-              <Flag code={selectedLanguage.code} />
+            />
+          </Link>
 
-              <span>{selectedLanguage.code}</span>
-
-              <ChevronDown
-                size={11}
-                strokeWidth={1.8}
-                className={`transition-transform duration-200 ${
-                  languageOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {languageOpen && (
-              <div className="absolute right-0 top-full z-50 w-[160px] pt-3">
-                <div className="overflow-hidden rounded-md border border-[#E1E6E1] bg-white py-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.08)]">
-                  {LANGUAGES.map((language) => {
-                    const active = selectedLanguage.code === language.code;
-
-                    return (
-                      <button
-                        key={language.code}
-                        type="button"
-                        onClick={() => handleLanguageChange(language)}
-                        className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[12px] transition-colors ${
-                          active
-                            ? "bg-[#F0F5F0] text-[#2E7D32]"
-                            : "text-[#59635C] hover:bg-[#F0F5F0] hover:text-[#2E7D32]"
-                        }`}
-                      >
-                        <Flag code={language.code} />
-
-                        <span className="flex-1">{language.name}</span>
-
-                        {active && <span className="text-[10px] font-semibold">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </nav>
-
-        {/* =====================================================
-            MOBILE BUTTON (di bawah lg / 1024px)
-        ===================================================== */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          className="ml-auto flex h-10 w-10 items-center justify-center border border-[#DDE3DE] text-[#39433D] min-[1180px]:hidden"
-          aria-label={mobileOpen ? "Tutup menu" : "Buka menu"}
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X size={19} /> : <Menu size={19} />}
-        </button>
-      </div>
-
-      {/* =====================================================
-          MOBILE MENU
-      ===================================================== */}
-      {mobileOpen && (
-        <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-[#E5E7E5] bg-white px-5 py-5 min-[1180px]:hidden">
-          <nav className="flex flex-col">
+          {/* =====================================================
+              DESKTOP NAV (mulai 1180px)
+          ===================================================== */}
+          <nav
+            ref={navRef}
+            className="ml-auto hidden items-center gap-1 pl-6 min-[1180px]:flex"
+          >
             {BEFORE_PROFIL.map((item) => (
-              <MobileLink
+              <DesktopLink
                 key={item.href}
                 item={item}
                 active={pathname === item.href}
-                onNavigate={closeMobile}
+                onDark={onHero}
               />
             ))}
 
-            <MobileGroup
+            {/* PROFIL (dengan sub menu) */}
+            <DesktopDropdown
               label="Profil"
               items={PROFIL_SUBMENU}
               pathname={pathname}
-              onNavigate={closeMobile}
+              onDark={onHero}
+              open={openMenu === "Profil"}
+              onOpen={() => openDropdown("Profil")}
+              onClose={() => closeDropdown("Profil")}
+              onToggle={() => toggleDropdown("Profil")}
+              align="left"
             />
 
             {BEFORE_HKI.map((item) => (
-              <MobileLink
+              <DesktopLink
                 key={item.href}
                 item={item}
                 active={pathname === item.href}
-                onNavigate={closeMobile}
+                onDark={onHero}
               />
             ))}
 
-            <MobileGroup
+            {/* HKI (dengan sub menu) */}
+            <DesktopDropdown
               label="HKI"
               items={HKI_SUBMENU}
               pathname={pathname}
-              onNavigate={closeMobile}
+              onDark={onHero}
+              open={openMenu === "HKI"}
+              onOpen={() => openDropdown("HKI")}
+              onClose={() => closeDropdown("HKI")}
+              onToggle={() => toggleDropdown("HKI")}
             />
 
             {AFTER_HKI.map((item) => (
-              <MobileLink
+              <DesktopLink
                 key={item.href}
                 item={item}
                 active={pathname === item.href}
-                onNavigate={closeMobile}
+                onDark={onHero}
               />
             ))}
 
-            <MobileGroup
+            {/* INFORMASI (dengan sub menu) */}
+            <DesktopDropdown
               label="Informasi"
               items={INFORMASI_SUBMENU}
               pathname={pathname}
-              onNavigate={closeMobile}
+              onDark={onHero}
+              open={openMenu === "Informasi"}
+              onOpen={() => openDropdown("Informasi")}
+              onClose={() => closeDropdown("Informasi")}
+              onToggle={() => toggleDropdown("Informasi")}
             />
 
             {AFTER_INFORMASI.map((item) => (
-              <MobileLink
+              <DesktopLink
                 key={item.href}
                 item={item}
                 active={pathname === item.href}
-                onNavigate={closeMobile}
+                onDark={onHero}
               />
             ))}
 
-            {/* MOBILE SEARCH */}
+            {/* ===================================================
+                SEARCH (kapsul)
+            =================================================== */}
             <form
               onSubmit={submitSearch}
               role="search"
-              className="mt-4 flex h-[42px] items-center border border-[#DDE3DE] px-3"
+              className={`ml-3 flex h-9 w-[150px] items-center rounded-md border px-3 transition-colors ${
+                onHero
+                  ? "border-white/45 bg-white/10 focus-within:border-white"
+                  : "border-[#D9E2D3] bg-white focus-within:border-[#31551F]"
+              }`}
             >
               <button
                 type="submit"
                 aria-label="Cari"
-                className="mr-2 text-[#8B958E]"
+                className={`mr-2 transition-colors ${
+                  onHero
+                    ? "text-white/80 hover:text-white"
+                    : "text-[#879088] hover:text-[#2E7D32]"
+                }`}
               >
-                <Search size={15} />
+                <Search size={15} strokeWidth={1.7} />
               </button>
 
               <input
-                id="cari-mobile"
+                id="cari-desktop"
                 name="q"
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari informasi..."
-                aria-label="Cari informasi"
+                placeholder="Cari..."
+                aria-label="Cari"
                 autoComplete="off"
                 enterKeyHint="search"
-                className="w-full bg-transparent text-[13px] outline-none"
+                className={`w-full min-w-0 bg-transparent text-[12px] outline-none ${
+                  onHero
+                    ? "text-white placeholder:text-white/70"
+                    : "text-[#465049] placeholder:text-[#9BA39D]"
+                }`}
               />
             </form>
 
-            {/* MOBILE LANGUAGE */}
-            <div className="mt-4 border border-[#DDE3DE]" translate="no">
-              <p className="border-b border-[#EDF0ED] px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#89928C]">
-                Bahasa
-              </p>
+            {/* ===================================================
+                LANGUAGE DROPDOWN (kapsul)
+            =================================================== */}
+            <div className="relative ml-2" translate="no">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  setLanguageOpen((prev) => !prev);
+                }}
+                aria-expanded={languageOpen}
+                aria-haspopup="menu"
+                className={`flex h-9 items-center gap-2 rounded-md border px-3 text-[12px] font-medium transition-colors ${
+                  onHero
+                    ? "border-white/45 bg-white/10 text-white hover:border-white"
+                    : `border-[#D9E2D3] bg-white hover:text-[#2E7D32] ${
+                        languageOpen ? "text-[#2E7D32]" : "text-[#4B554E]"
+                      }`
+                }`}
+              >
+                <Flag code={selectedLanguage.code} />
 
-              {LANGUAGES.map((language) => {
-                const active = selectedLanguage.code === language.code;
+                <span>{selectedLanguage.code}</span>
 
-                return (
-                  <button
-                    key={language.code}
-                    type="button"
-                    onClick={() => handleLanguageChange(language)}
-                    className={`flex w-full items-center gap-2.5 px-3 py-3 text-left text-[13px] ${
-                      active ? "text-[#2E7D32]" : "text-[#59635C]"
-                    }`}
-                  >
-                    <Flag code={language.code} />
+                <ChevronDown
+                  size={11}
+                  strokeWidth={1.8}
+                  className={`transition-transform duration-200 ${
+                    languageOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-                    <span className="flex-1">{language.name}</span>
+              {languageOpen && (
+                <div className="absolute right-0 top-full z-50 w-[160px] pt-3">
+                  <div className="overflow-hidden rounded-xl border border-[#E1E6E1] bg-white py-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.10)]">
+                    {LANGUAGES.map((language) => {
+                      const active = selectedLanguage.code === language.code;
 
-                    {active && <span className="text-[11px] font-semibold">✓</span>}
-                  </button>
-                );
-              })}
+                      return (
+                        <button
+                          key={language.code}
+                          type="button"
+                          onClick={() => handleLanguageChange(language)}
+                          className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[12px] transition-colors ${
+                            active
+                              ? "bg-[#F0F5F0] text-[#2E7D32]"
+                              : "text-[#59635C] hover:bg-[#F0F5F0] hover:text-[#2E7D32]"
+                          }`}
+                        >
+                          <Flag code={language.code} />
+
+                          <span className="flex-1">{language.name}</span>
+
+                          {active && (
+                            <span className="text-[10px] font-semibold">✓</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </nav>
+
+          {/* =====================================================
+              MOBILE BUTTON (di bawah 1180px)
+          ===================================================== */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            className={`ml-auto flex h-10 w-10 items-center justify-center rounded-md border min-[1180px]:hidden ${
+              onHero
+                ? "border-white/45 bg-white/10 text-white"
+                : "border-[#D9E2D3] bg-white text-[#39433D]"
+            }`}
+            aria-label={mobileOpen ? "Tutup menu" : "Buka menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
         </div>
-      )}
+
+        {/* =====================================================
+            MOBILE MENU (membuka ke bawah, latar putih)
+        ===================================================== */}
+        {mobileOpen && (
+          <div className="max-h-[calc(100vh-72px)] overflow-y-auto border-t border-[#E5E7E5] bg-white px-5 py-5 min-[1180px]:hidden">
+            <nav className="flex flex-col">
+              {BEFORE_PROFIL.map((item) => (
+                <MobileLink
+                  key={item.href}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={closeMobile}
+                />
+              ))}
+
+              <MobileGroup
+                label="Profil"
+                items={PROFIL_SUBMENU}
+                pathname={pathname}
+                onNavigate={closeMobile}
+              />
+
+              {BEFORE_HKI.map((item) => (
+                <MobileLink
+                  key={item.href}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={closeMobile}
+                />
+              ))}
+
+              <MobileGroup
+                label="HKI"
+                items={HKI_SUBMENU}
+                pathname={pathname}
+                onNavigate={closeMobile}
+              />
+
+              {AFTER_HKI.map((item) => (
+                <MobileLink
+                  key={item.href}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={closeMobile}
+                />
+              ))}
+
+              <MobileGroup
+                label="Informasi"
+                items={INFORMASI_SUBMENU}
+                pathname={pathname}
+                onNavigate={closeMobile}
+              />
+
+              {AFTER_INFORMASI.map((item) => (
+                <MobileLink
+                  key={item.href}
+                  item={item}
+                  active={pathname === item.href}
+                  onNavigate={closeMobile}
+                />
+              ))}
+
+              {/* MOBILE SEARCH */}
+              <form
+                onSubmit={submitSearch}
+                role="search"
+                className="mt-4 flex h-[42px] items-center rounded-full border border-[#D9E2D3] px-4"
+              >
+                <button
+                  type="submit"
+                  aria-label="Cari"
+                  className="mr-2 text-[#8B958E]"
+                >
+                  <Search size={15} />
+                </button>
+
+                <input
+                  id="cari-mobile"
+                  name="q"
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cari informasi..."
+                  aria-label="Cari informasi"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  className="w-full bg-transparent text-[13px] outline-none"
+                />
+              </form>
+
+              {/* MOBILE LANGUAGE */}
+              <div
+                className="mt-4 overflow-hidden rounded-xl border border-[#D9E2D3]"
+                translate="no"
+              >
+                <p className="border-b border-[#EDF0ED] px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[#89928C]">
+                  Bahasa
+                </p>
+
+                {LANGUAGES.map((language) => {
+                  const active = selectedLanguage.code === language.code;
+
+                  return (
+                    <button
+                      key={language.code}
+                      type="button"
+                      onClick={() => handleLanguageChange(language)}
+                      className={`flex w-full items-center gap-2.5 px-3 py-3 text-left text-[13px] ${
+                        active ? "text-[#2E7D32]" : "text-[#59635C]"
+                      }`}
+                    >
+                      <Flag code={language.code} />
+
+                      <span className="flex-1">{language.name}</span>
+
+                      {active && (
+                        <span className="text-[11px] font-semibold">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+        )}
+      </div>
 
       {/* wadah widget Google Translate (disembunyikan, hanya dipakai internal) */}
       <div

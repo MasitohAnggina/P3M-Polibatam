@@ -24,6 +24,14 @@ use Illuminate\Support\Str;
    peduli huruf besar/kecil). Kegiatan yang namanya tidak cocok
    dengan siapa pun masuk ke "Lainnya".
 
+   Form admin peneliti sekarang hanya mengisi: nama, prodi, foto,
+   dan tautan SINTA. Karena itu JURUSAN tidak lagi diisi manual,
+   tetapi ditentukan dari prodi (lihat jurusanPerProdi):
+   1) jurusan yang tersimpan di peneliti itu sendiri (data lama),
+   2) jurusan peneliti lain di prodi yang sama,
+   3) daftar PRODI_JURUSAN di bawah,
+   4) "Lainnya".
+
    Partisipasi dosen: peneliti dihitung ikut kalau namanya muncul
    di ketua, anggota, penulis, atau inventor pada tahun itu.
 
@@ -40,6 +48,12 @@ class InfografisController extends Controller
     private const KATEGORI_NASIONAL = 'Jurnal Nasional';
     private const KATEGORI_BUKU = 'E-Book';
     private const KATEGORI_PROSIDING = 'Prosiding';
+
+    /* Cadangan jurusan untuk prodi yang belum punya peneliti dengan
+       jurusan terisi. Isi dengan nama prodi persis seperti di admin, mis.:
+       'D3 Teknik Informatika' => 'Teknik Informatika',
+       'D4 Teknik Informatika' => 'Teknik Informatika', */
+    private const PRODI_JURUSAN = [];
 
     /* GET /api/statistik (publik): angka ringkas untuk Beranda.
        Jumlah seluruh data, tanpa pencocokan nama. */
@@ -143,7 +157,7 @@ class InfografisController extends Controller
 
         $prodi = $prodi
             ->unique('name')
-            ->sortBy('name')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
         $prodiList = $this->beriSingkatan($prodi);
@@ -267,7 +281,7 @@ class InfografisController extends Controller
             ->pluck('nama_en', 'nama')
             ->toArray();
 
-        /* singkatan prodi versi Inggris (mis. TI => IE), dibuat dari nama Inggrisnya */
+        /* singkatan prodi versi Inggris (mis. D4 TI => D4 IE), dibuat dari nama Inggrisnya */
         $dipakaiEn = [];
 
         foreach ($prodiList as $p) {
@@ -313,19 +327,53 @@ class InfografisController extends Controller
 
     private function daftarPeneliti()
     {
-        return Peneliti::query()
-            ->orderBy('nama')
-            ->get()
-            ->map(fn (Peneliti $p) => [
-                'id'      => $p->id,
-                'nama'    => $p->nama,
-                'nidn'    => $p->nidn,
-                'prodi'   => trim((string) $p->prodi) ?: self::LAIN,
-                'jurusan' => trim((string) $p->jurusan) ?: self::LAIN,
-                'kunci'   => $this->normalisasi($this->namaInti($p->nama)),
-            ])
+        $semua = Peneliti::query()->orderBy('nama')->get();
+
+        $jurusanPerProdi = $this->jurusanPerProdi($semua);
+
+        return $semua
+            ->map(function (Peneliti $p) use ($jurusanPerProdi) {
+                $prodi = $this->bersihkan($p->prodi) ?: self::LAIN;
+
+                $jurusan = $this->bersihkan($p->jurusan)
+                    ?: ($jurusanPerProdi[$prodi] ?? self::LAIN);
+
+                return [
+                    'id'      => $p->id,
+                    'nama'    => $p->nama,
+                    'nidn'    => $p->nidn,
+                    'prodi'   => $prodi,
+                    'jurusan' => $jurusan,
+                    'kunci'   => $this->normalisasi($this->namaInti($p->nama)),
+                ];
+            })
             ->filter(fn ($p) => mb_strlen($p['kunci']) >= 4)
             ->values();
+    }
+
+    /* [nama prodi => jurusan]. Form admin tidak lagi mengisi jurusan, jadi
+       jurusan prodi diambil dari peneliti (data lama) yang jurusannya masih
+       terisi, lalu dari daftar PRODI_JURUSAN. */
+    private function jurusanPerProdi($semua): array
+    {
+        $peta = [];
+
+        foreach ($semua as $p) {
+            $prodi = $this->bersihkan($p->prodi);
+            $jurusan = $this->bersihkan($p->jurusan);
+
+            if ($prodi !== '' && $jurusan !== '' && ! isset($peta[$prodi])) {
+                $peta[$prodi] = $jurusan;
+            }
+        }
+
+        return $peta + self::PRODI_JURUSAN;
+    }
+
+    /* trim dan rapikan spasi ganda ("D4  Teknik Informatika " -> "D4 Teknik Informatika") */
+    private function bersihkan(?string $teks): string
+    {
+        return trim(preg_replace('/\s+/', ' ', (string) $teks));
     }
 
     /* "Dr. Rina Marlina, S.Kom., M.Kom." -> "Rina Marlina" */
@@ -382,16 +430,14 @@ class InfografisController extends Controller
        BANTUAN
     ========================================================= */
 
+    /* Tambahkan kunci 'short' ke tiap prodi. Kalau singkatannya kembar
+       dengan prodi lain, pakai nama lengkap supaya tidak tertukar. */
     private function beriSingkatan($prodi)
     {
         $dipakai = [];
 
         return $prodi->map(function ($p) use (&$dipakai) {
-            $kata = preg_split('/\s+/', trim($p['name']));
-            $singkat = collect($kata)
-                ->reject(fn ($k) => in_array(Str::lower($k), ['dan', 'di', 'ke', 'of', 'the'], true))
-                ->map(fn ($k) => Str::upper(Str::substr($k, 0, 1)))
-                ->implode('');
+            $singkat = $this->singkatan($p['name']);
 
             if ($singkat === '' || in_array($singkat, $dipakai, true)) {
                 $singkat = $p['name'];
@@ -403,13 +449,33 @@ class InfografisController extends Controller
         });
     }
 
-    /* singkatan satu nama (dipakai untuk nama prodi versi Inggris) */
+    /* Singkatan nama prodi, dipakai untuk versi Indonesia dan Inggris.
+       Jenjang (D3, D4, S1, S2, ...) dipertahankan utuh di depan:
+         "D3 Teknik Informatika"          -> "D3 TI"
+         "D4 Teknik Informatika"          -> "D4 TI"
+         "Teknik Informatika (D4)"        -> "D4 TI"
+         "D-IV Teknik Informatika"        -> "D4 TI"
+         "Manajemen Bisnis"               -> "MB"
+         "D4 Informatics Engineering"     -> "D4 IE" */
     private function singkatan(string $nama): string
     {
-        return collect(preg_split('/\s+/', trim($nama)))
+        $nama = $this->bersihkan($nama);
+        $jenjang = '';
+
+        $pola = '/[\(\[]?\b([DS])\s?-?\s?([1-4]|III|IV)\b[\)\]]?/i';
+
+        if (preg_match($pola, $nama, $m)) {
+            $angka = ['III' => '3', 'IV' => '4'][Str::upper($m[2])] ?? $m[2];
+            $jenjang = Str::upper($m[1]) . $angka;
+            $nama = $this->bersihkan(preg_replace($pola, ' ', $nama, 1));
+        }
+
+        $inisial = collect(preg_split('/\s+/', $nama, -1, PREG_SPLIT_NO_EMPTY))
             ->reject(fn ($k) => in_array(Str::lower($k), ['dan', 'di', 'ke', 'of', 'the', 'and'], true))
             ->map(fn ($k) => Str::upper(Str::substr($k, 0, 1)))
             ->implode('');
+
+        return trim($jenjang . ' ' . $inisial);
     }
 
     private function barisKosong(int $tahun, string $prodi, string $jurusan, int $dosen): array

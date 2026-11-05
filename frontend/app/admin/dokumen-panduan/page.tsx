@@ -679,7 +679,7 @@ export default function AdminDokumenPanduanPage() {
 
             <p className="mt-2 text-[13px] leading-6 text-[#7A867F] sm:ml-[52px]">
               Kelola buku panduan, template, formulir, dan SK yang ditampilkan
-              pada halaman Dokumen &amp; Panduan P2M.
+              pada halaman Dokumen &amp; Panduan P3M.
             </p>
           </div>
 

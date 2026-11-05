@@ -124,6 +124,7 @@ const hkiTypes = [
   "Paten",
   "Paten Sederhana",
   "Desain Industri",
+  "Merek",
 ];
 
 const hkiCategories = [
@@ -255,16 +256,17 @@ export default function AdminHkiPage() {
   /* ---------- RINGKASAN ---------- */
 
   const summary = useMemo(
-    () => ({
-      total: items.length,
-      hakCipta: items.filter((i) => i.jenis === "Hak Cipta").length,
-      paten: items.filter(
-        (i) => i.jenis === "Paten" || i.jenis === "Paten Sederhana"
-      ).length,
-      desain: items.filter((i) => i.jenis === "Desain Industri").length,
-    }),
-    [items]
-  );
+  () => ({
+    total: items.length,
+    hakCipta: items.filter((i) => i.jenis === "Hak Cipta").length,
+    paten: items.filter(
+      (i) => i.jenis === "Paten" || i.jenis === "Paten Sederhana"
+    ).length,
+    desain: items.filter((i) => i.jenis === "Desain Industri").length,
+    merek: items.filter((i) => i.jenis === "Merek").length,
+  }),
+  [items]
+);
 
   /* ---------- MODAL ---------- */
 
@@ -501,6 +503,12 @@ export default function AdminHkiPage() {
             label="Desain Industri"
             value={summary.desain}
             grow={Math.max(summary.desain, 1)}
+            className="border border-[#2E7D32]/30 bg-transparent text-[#2E5B32]"
+          />
+          <SummaryPill
+            label="Merek"
+            value={summary.merek}
+            grow={Math.max(summary.merek, 1)}
             className="border border-[#2E7D32]/30 bg-transparent text-[#2E5B32]"
           />
         </div>
