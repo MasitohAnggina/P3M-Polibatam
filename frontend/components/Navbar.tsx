@@ -36,7 +36,8 @@ const HKI_SUBMENU: NavItem[] = [
 
 const AFTER_HKI: NavItem[] = [{ label: "Publikasi", href: "/publikasi" }];
 
-/* Informasi sekarang punya sub menu */
+/* Informasi sekarang punya sub menu.
+   href harus sama dengan nama folder di src/app/ */
 const INFORMASI_SUBMENU: NavItem[] = [
   { label: "Pengumuman & Berita", href: "/informasi" },
   { label: "Dokumen & Panduan", href: "/dokumen-dan-panduan" },
@@ -69,12 +70,20 @@ const SEARCH_MIN_CHARS = 2;
    lalu jadi putih setelah di-scroll. Halaman yang ditambahkan di sini
    harus memakai -mt-[72px] pada <main> dan pt-[72px] pada heronya
    (lihat Beranda, Profil, Profil Peneliti, Penelitian, Pengabdian,
-   Pendaftaran HKI, HKI, Publikasi, dan Informasi).
+   Pendaftaran HKI, HKI, Publikasi, Informasi, Dokumen & Panduan,
+   Infografis, dan Pencarian).
    Halaman lain memakai navbar putih biasa.
+
+   Halaman Dokumen & Panduan didaftarkan dengan dua penulisan
+   (/dokumen-dan-panduan dan /dokumen-panduan) supaya navbar tetap
+   transparan apa pun nama foldernya.
 
    Khusus /penelitian, /pengabdian, /hki/hki, /publikasi, dan /informasi:
    tampilan detail (alamat #detail-<id>) tidak punya hero, jadi di sana
-   navbar tetap putih. */
+   navbar tetap putih.
+
+   /pencarian tidak punya tampilan detail: heronya (judul + kolom cari)
+   selalu tampil, jadi cukup didaftarkan di sini. */
 const HERO_PATHS = [
   "/",
   "/profil",
@@ -85,6 +94,10 @@ const HERO_PATHS = [
   "/hki/hki",
   "/publikasi",
   "/informasi",
+  "/dokumen-dan-panduan",
+  "/dokumen-panduan",
+  "/infografis",
+  "/pencarian",
 ];
 
 /* halaman yang punya tampilan detail tanpa hero */
@@ -493,15 +506,15 @@ function MobileGroup({
    NAVBAR (polos, tinggi 72px)
 
    Di halaman dalam HERO_PATHS (Beranda, Profil, Profil Peneliti,
-   Penelitian, Pengabdian, Pendaftaran HKI, HKI, Publikasi, dan
-   Informasi) navbar transparan dan tampil di atas hero: teks putih,
-   logo putih, kolom search dan bahasa berbingkai putih. Setelah halaman
-   digulir sedikit, navbar berubah jadi putih dengan teks gelap. Di
-   HALAMAN LAIN navbar selalu putih.
+   Penelitian, Pengabdian, Pendaftaran HKI, HKI, Publikasi, Informasi,
+   Dokumen & Panduan, Infografis, dan Pencarian) navbar transparan dan
+   tampil di atas hero: teks putih, logo putih, kolom search dan bahasa
+   berbingkai putih. Setelah halaman digulir sedikit, navbar berubah jadi
+   putih dengan teks gelap. Di HALAMAN LAIN navbar selalu putih.
 
    Supaya hero tampil di belakang navbar, <main> di halaman itu diberi
-   -mt-[72px] dan hero diberi pt-[72px] (lihat Beranda, Profil, dan
-   Profil Peneliti).
+   -mt-[72px] dan hero diberi pt-[72px] (lihat Beranda, Profil,
+   Profil Peneliti, dan Pencarian).
 
    Menu desktop tampil mulai lebar 1180px dengan satu ukuran saja
    (huruf 13px, padding px-3, search 150px, logo 38px), jadi tampilannya
