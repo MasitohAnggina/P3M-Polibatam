@@ -31,6 +31,19 @@ import {
    halaman publik (arah pengabdian, kartu program, tahapan)
    adalah konten tetap di kode, jadi tidak perlu dikelola di sini.
 
+   KATEGORI mengikuti menu Publikasi di p2m.polibatam.ac.id
+   (daftar per tahun, 2010 s.d. sekarang):
+   - Program Internal  = "Penguatan Budaya Riset Dosen Politeknik
+                          Negeri Batam" (pemberdayaan, kerjasama,
+                          penugasan, dst.)
+   - Program Eksternal = Kemendikbud/Kemdiktisaintek (Simlitabmas,
+                          BIMA) dan hibah luar lainnya
+
+   BIDANG FOKUS dipilih dari 8 bidang prioritas riset (dropdown),
+   sama dengan halaman publik app/pengabdian/page.tsx. Halaman publik
+   mengelompokkan pengabdian lewat kolom `bidang`, jadi judulnya HARUS
+   sama persis dengan `focusAreas` di halaman publik.
+
    KONTRAK API (Laravel, Sanctum):
    GET    /api/admin/pengabdian        -> { data: ApiService[] }
    POST   /api/admin/pengabdian        -> { data: ApiService }  (multipart)
@@ -39,8 +52,9 @@ import {
    Publik: GET /api/pengabdian         -> { data: ApiService[] }
 
    Field multipart saat simpan:
-   judul, ketua, mitra, bidang, kelompok (Internal/Eksternal, otomatis
-   dari program), program, tahun, abstrak, anggota[], kata_kunci[],
+   judul, ketua, mitra, bidang (salah satu dari 8 prioritas riset),
+   kelompok (Internal/Eksternal, dipilih admin), program (diketik bebas),
+   tahun, abstrak, anggota[], kata_kunci[],
    gambar (file gambar apa saja, opsional), hapus_gambar (1 = hapus gambar lama).
 ========================================================= */
 
@@ -118,10 +132,53 @@ function imageUrl(path: string | null): string {
 }
 
 /* =========================================================
-   PROGRAM
-   Judul program HARUS sama persis dengan judul di halaman
-   publik (programGroups pada app/pengabdian/page.tsx), karena
-   halaman publik mencocokkan program lewat judulnya.
+   BIDANG FOKUS (8 prioritas riset)
+   Judul HARUS sama persis dengan `focusAreas` di
+   app/pengabdian/page.tsx (halaman publik), karena halaman publik
+   mengelompokkan pengabdian lewat kolom `bidang`. Kalau daftar ini
+   berubah, ubah juga di halaman publik (atau pindahkan ke satu file
+   bersama, misalnya src/lib/focus-areas.ts).
+========================================================= */
+
+const FOCUS_AREAS = [
+  "Ketahanan Pangan dan Pertanian",
+  "Transisi Energi, Material, dan Manufaktur",
+  "Kesehatan dan Kemandirian Obat Nasional",
+  "Rekayasa dan Teknologi Digital (AI, IoT, Semikonduktor)",
+  "Pertahanan dan Keamanan",
+  "Kemaritiman",
+  "Industri dan Hilirisasi",
+  "Kemandirian Sosial dan Budaya",
+];
+
+const normalizeText = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
+
+/* Cocokkan teks bidang (misalnya data lama) dengan salah satu dari 8
+   bidang. Huruf besar/kecil dan spasi berlebih diabaikan, sama seperti
+   di halaman publik. Mengembalikan "" kalau tidak ada yang cocok. */
+function matchFocusArea(value: string): string {
+  const target = normalizeText(value);
+  if (!target) return "";
+  return FOCUS_AREAS.find((area) => normalizeText(area) === target) ?? "";
+}
+
+/* =========================================================
+   PROGRAM (skema pengabdian)
+   Program diisi dengan KETIK BEBAS. Daftar di bawah hanya SARAN
+   yang muncul saat mengetik (mengikuti menu Publikasi
+   p2m.polibatam.ac.id), supaya program baru dari panduan tahun
+   berikutnya tidak perlu mengubah kode.
+
+   Kelompok (Internal/Eksternal) dipilih admin sendiri, karena
+   program baru tidak bisa ditebak kelompoknya. Kalau admin memilih
+   salah satu saran, kelompoknya terisi otomatis.
+
+   Catatan untuk halaman publik: kartu program di
+   app/pengabdian/page.tsx mencocokkan lewat judul, jadi program
+   yang tidak ada di daftar kartu itu hanya muncul di kelompoknya
+   (Internal/Eksternal). Kalau Laravel memakai aturan `in:` untuk
+   `program`, ganti menjadi `required|string|max:150`.
 ========================================================= */
 
 type GroupId = "Internal" | "Eksternal";
@@ -130,15 +187,26 @@ const PROGRAM_GROUPS: { id: GroupId; label: string; programs: string[] }[] = [
   {
     id: "Internal",
     label: "Program Internal",
-    programs: ["Penugasan Polibatam", "Hibah PBL"],
+    programs: [
+      "Pengabdian Pemberdayaan Masyarakat",
+      "Pengabdian Kerjasama",
+      "Pengabdian Penunjukan/Penugasan",
+      /* skema yang dipakai di arsip 2022 */
+      "Pengabdian Hasil Penelitian",
+      "Pengabdian Desa Wisata",
+      "Pengabdian Terdampak Covid",
+    ],
   },
   {
     id: "Eksternal",
     label: "Program Eksternal",
     programs: [
+      /* Kemendikbud lewat Simlitabmas (arsip 2022) */
+      "Pengabdian Penerapan Iptek Masyarakat",
+      /* Kemendikbud lewat BIMA (2023 dst.) */
+      "Pengabdian Pemberdayaan Kemitraan Masyarakat",
       "Pengabdian BIMA",
-      "Pengabdian CSR",
-      "Kerja Sama dan Sumber Lainnya",
+      "Pengabdian Hibah Lainnya",
     ],
   },
 ];
@@ -222,17 +290,19 @@ const emptyForm: Service = {
 
 const ALL_PROGRAMS = "Semua Program";
 const ALL_YEARS = "Semua Tahun";
+const ALL_FIELDS = "Semua Bidang";
 const PAGE_SIZE = 10;
 
-/* Tahun: dari tahun depan mundur 7 tahun */
+/* Tahun: dari tahun depan mundur sampai 2010, karena arsip
+   Publikasi di p2m.polibatam.ac.id dimulai dari tahun 2010. */
+const FIRST_YEAR = 2010;
 const thisYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => String(thisYear + 1 - i));
+const YEAR_OPTIONS = Array.from(
+  { length: thisYear + 1 - FIRST_YEAR + 1 },
+  (_, i) => String(thisYear + 1 - i)
+);
 
-const programFilterOptions = [
-  ALL_PROGRAMS,
-  ...PROGRAM_GROUPS.map((g) => g.label),
-  ...PROGRAM_GROUPS.flatMap((g) => g.programs),
-];
+const KNOWN_PROGRAMS = PROGRAM_GROUPS.flatMap((g) => g.programs);
 
 function matchesProgram(service: Service, selected: string) {
   if (selected === ALL_PROGRAMS) return true;
@@ -241,6 +311,11 @@ function matchesProgram(service: Service, selected: string) {
   if (group) return service.group === group.id;
 
   return service.program === selected;
+}
+
+function matchesField(service: Service, selected: string) {
+  if (selected === ALL_FIELDS) return true;
+  return normalizeText(service.field) === normalizeText(selected);
 }
 
 /* =========================================================
@@ -290,8 +365,8 @@ function buildBody(
   body.append("ketua", form.leader.trim());
   body.append("mitra", form.partner.trim());
   body.append("bidang", form.field.trim());
-  body.append("kelompok", groupOfProgram(form.program));
-  body.append("program", form.program);
+  body.append("kelompok", form.group);
+  body.append("program", form.program.trim());
   body.append("tahun", form.year);
   body.append("abstrak", form.abstract.trim());
 
@@ -319,6 +394,7 @@ export default function AdminPengabdianPage() {
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState(ALL_YEARS);
   const [programFilter, setProgramFilter] = useState(ALL_PROGRAMS);
+  const [fieldFilter, setFieldFilter] = useState(ALL_FIELDS);
   const [page, setPage] = useState(1);
 
   const [modal, setModal] = useState<ModalType>(null);
@@ -391,9 +467,14 @@ export default function AdminPengabdianPage() {
 
       const matchYear = yearFilter === ALL_YEARS || item.year === yearFilter;
 
-      return matchSearch && matchYear && matchesProgram(item, programFilter);
+      return (
+        matchSearch &&
+        matchYear &&
+        matchesProgram(item, programFilter) &&
+        matchesField(item, fieldFilter)
+      );
     });
-  }, [services, search, yearFilter, programFilter]);
+  }, [services, search, yearFilter, programFilter, fieldFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -410,6 +491,17 @@ export default function AdminPengabdianPage() {
     );
     return [ALL_YEARS, ...all];
   }, [services]);
+
+  /* filter program: kelompok + saran + program yang sudah ada di data
+     (termasuk program yang diketik bebas oleh admin) */
+  const programFilterOptions = useMemo(() => {
+    const fromData = services.map((r) => r.program).filter(Boolean);
+    const programs = Array.from(new Set([...KNOWN_PROGRAMS, ...fromData]));
+    return [ALL_PROGRAMS, ...PROGRAM_GROUPS.map((g) => g.label), ...programs];
+  }, [services]);
+
+  /* filter bidang: 8 bidang prioritas riset */
+  const fieldFilterOptions = useMemo(() => [ALL_FIELDS, ...FOCUS_AREAS], []);
 
   /* =========================================================
      SUMMARY (ringkasan di atas tabel)
@@ -466,6 +558,9 @@ export default function AdminPengabdianPage() {
     setSelected(service);
     setForm({
       ...service,
+      /* data lama yang hanya beda huruf besar/kecil atau spasi
+         otomatis dirapikan ke salah satu dari 8 bidang */
+      field: matchFocusArea(service.field) || service.field,
       members: [...service.members],
       keywords: [...service.keywords],
     });
@@ -490,6 +585,15 @@ export default function AdminPengabdianPage() {
 
   function updateField<K extends keyof Service>(field: K, value: Service[K]) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  /* kalau yang diketik cocok dengan salah satu saran, kelompok ikut terisi */
+  function updateProgram(value: string) {
+    setForm((current) => ({
+      ...current,
+      program: value,
+      group: groupOfProgram(value.trim()) || current.group,
+    }));
   }
 
   /* =========================================================
@@ -537,9 +641,13 @@ export default function AdminPengabdianPage() {
      SAVE (POST ke API)
   ========================================================= */
 
+  /* bidang wajib dipilih, karena pengabdian tanpa bidang tidak
+     tampil di 8 card bidang pada halaman publik */
   const canSave =
     form.title.trim() !== "" &&
     form.leader.trim() !== "" &&
+    form.field.trim() !== "" &&
+    form.group.trim() !== "" &&
     form.program.trim() !== "" &&
     form.year.trim() !== "";
 
@@ -693,7 +801,7 @@ export default function AdminPengabdianPage() {
         <div className="w-full rounded-[28px] bg-white/70 p-3 shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:p-4 md:p-5">
           {/* FILTER BAR */}
 
-          <div className="mb-4 flex flex-col gap-2.5 lg:flex-row lg:items-center">
+          <div className="mb-4 flex flex-col gap-2.5 xl:flex-row xl:items-center">
             <div className="relative min-w-0 flex-1">
               <Search
                 size={16}
@@ -713,7 +821,7 @@ export default function AdminPengabdianPage() {
               />
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 lg:w-[460px]">
+            <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3 xl:w-[720px]">
               <FilterSelect
                 value={yearFilter}
                 onChange={(v) => {
@@ -730,6 +838,14 @@ export default function AdminPengabdianPage() {
                 }}
                 options={programFilterOptions}
               />
+              <FilterSelect
+                value={fieldFilter}
+                onChange={(v) => {
+                  setFieldFilter(v);
+                  setPage(1);
+                }}
+                options={fieldFilterOptions}
+              />
             </div>
           </div>
 
@@ -743,7 +859,7 @@ export default function AdminPengabdianPage() {
                     <th className={`${thClass} py-4 pl-5 pr-3`}>Judul Pengabdian</th>
                     <th className={`${thClass} w-[190px] text-center`}>Ketua Pengusul</th>
                     <th className={`${thClass} w-[170px] text-center`}>Mitra</th>
-                    <th className={`${thClass} w-[170px] text-center`}>Bidang Fokus</th>
+                    <th className={`${thClass} w-[200px] text-center`}>Bidang Fokus</th>
                     <th className={`${thClass} w-[220px] text-center`}>Program</th>
                     <th className={`${thClass} w-[80px] text-center`}>Tahun</th>
                     <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
@@ -775,7 +891,20 @@ export default function AdminPengabdianPage() {
                         </td>
 
                         <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}>
-                          {service.field || <span className="text-[#A0AAA4]">—</span>}
+                          {service.field ? (
+                            <>
+                              <span className="line-clamp-2 leading-[18px]">
+                                {service.field}
+                              </span>
+                              {!matchFocusArea(service.field) && (
+                                <p className="mt-1 text-[11px] font-medium text-[#D97706]">
+                                  Belum sesuai 8 bidang
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-[#A0AAA4]">—</span>
+                          )}
                         </td>
 
                         <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
@@ -930,37 +1059,33 @@ export default function AdminPengabdianPage() {
                   />
                 </FormField>
 
-                <FormField label="Bidang Fokus">
-                  <input
-                    value={form.field}
-                    onChange={(e) => updateField("field", e.target.value)}
-                    placeholder="Contoh: Pemberdayaan Masyarakat"
-                    className={inputClass}
-                  />
-                </FormField>
-
-                <FormField label="Program" required>
+                {/* BIDANG FOKUS: dropdown 8 prioritas riset */}
+                <FormField
+                  label="Bidang Fokus"
+                  required
+                  hint="Prioritas riset"
+                  className="md:col-span-2"
+                >
                   <div className="relative">
                     <select
-                      value={form.program}
-                      onChange={(e) => updateField("program", e.target.value)}
+                      value={form.field}
+                      onChange={(e) => updateField("field", e.target.value)}
                       className={`${inputClass} appearance-none pr-9`}
                     >
-                      <option value="">Pilih program</option>
+                      <option value="">Pilih bidang prioritas riset</option>
 
-                      {/* program lama yang tidak ada di daftar tetap bisa tampil */}
-                      {form.program && !groupOfProgram(form.program) && (
-                        <option value={form.program}>{form.program}</option>
+                      {/* data lama yang bidangnya bukan salah satu dari 8
+                          pilihan tetap tampil, supaya tidak hilang saat diedit */}
+                      {form.field && !FOCUS_AREAS.includes(form.field) && (
+                        <option value={form.field}>
+                          {form.field} (tidak sesuai daftar)
+                        </option>
                       )}
 
-                      {PROGRAM_GROUPS.map((group) => (
-                        <optgroup key={group.id} label={group.label}>
-                          {group.programs.map((program) => (
-                            <option key={program} value={program}>
-                              {program}
-                            </option>
-                          ))}
-                        </optgroup>
+                      {FOCUS_AREAS.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
                       ))}
                     </select>
 
@@ -971,14 +1096,38 @@ export default function AdminPengabdianPage() {
                     />
                   </div>
 
-                  {form.program && groupOfProgram(form.program) && (
-                    <p className="mt-1 text-[11px] text-[#8A948E]">
-                      Kelompok: Program {groupOfProgram(form.program)}
+                  {form.field && !FOCUS_AREAS.includes(form.field) && (
+                    <p className="mt-1.5 text-[11px] leading-5 text-[#D97706]">
+                      Bidang ini belum sesuai 8 prioritas riset, jadi belum
+                      tampil di halaman publik. Pilih salah satu dari daftar.
                     </p>
                   )}
                 </FormField>
 
-                <FormField label="Tahun" required className="md:col-span-2">
+                <FormField label="Kelompok Program" required>
+                  <div className="relative">
+                    <select
+                      value={form.group}
+                      onChange={(e) => updateField("group", e.target.value)}
+                      className={`${inputClass} appearance-none pr-9`}
+                    >
+                      <option value="">Pilih kelompok</option>
+                      {PROGRAM_GROUPS.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={15}
+                      strokeWidth={1.8}
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
+                    />
+                  </div>
+                </FormField>
+
+                <FormField label="Tahun" required>
                   <div className="relative">
                     <select
                       value={form.year}
@@ -1001,6 +1150,32 @@ export default function AdminPengabdianPage() {
                       className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
                     />
                   </div>
+                </FormField>
+
+                <FormField
+                  label="Program"
+                  required
+                  hint="Ketik atau pilih dari saran"
+                  className="md:col-span-2"
+                >
+                  <input
+                    list="program-suggestions"
+                    value={form.program}
+                    onChange={(e) => updateProgram(e.target.value)}
+                    placeholder="Contoh: Pengabdian Pemberdayaan Masyarakat"
+                    autoComplete="off"
+                    className={inputClass}
+                  />
+
+                  <datalist id="program-suggestions">
+                    {PROGRAM_GROUPS.filter(
+                      (group) => !form.group || group.id === form.group
+                    )
+                      .flatMap((group) => group.programs)
+                      .map((program) => (
+                        <option key={program} value={program} />
+                      ))}
+                  </datalist>
                 </FormField>
 
                 <FormField label="Ringkasan Kegiatan" className="md:col-span-2">
@@ -1403,7 +1578,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full appearance-none rounded-full border border-transparent bg-white pl-4 pr-10 text-[12px] font-medium text-[#59655E] shadow-[0_1px_4px_rgba(38,53,45,0.05)] outline-none transition focus:border-[#2E7D32] focus:ring-4 focus:ring-[#2E7D32]/10"
+        className="h-11 w-full appearance-none truncate rounded-full border border-transparent bg-white pl-4 pr-10 text-[12px] font-medium text-[#59655E] shadow-[0_1px_4px_rgba(38,53,45,0.05)] outline-none transition focus:border-[#2E7D32] focus:ring-4 focus:ring-[#2E7D32]/10"
       >
         {options.map((option) => (
           <option key={option} value={option}>

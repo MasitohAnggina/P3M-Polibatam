@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import {
+  Anchor,
   ArrowLeft,
   ArrowRight,
   Building2,
@@ -21,14 +22,20 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Cpu,
+  Factory,
   FileText,
   Globe,
   Handshake,
+  HeartPulse,
   Layers,
   Search,
+  ShieldCheck,
   Tag,
   Users,
   WalletCards,
+  Wheat,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +93,12 @@ const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
    isi          : 14 (leading 1.75)
    label/meta   : 11-13
 
+   PRINSIP ISI TEKS
+   Teks dibuat singkat supaya nyaman dibaca: satu gagasan per
+   kalimat, paragraf pendek, lebar baris dibatasi (sekitar 640px).
+   Rincian lengkap ada di dokumen RIP dan Panduan yang bisa
+   dibuka dari halaman ini.
+
    FOTO KEGIATAN
    Foto bersifat opsional. Kalau admin tidak mengunggah gambar,
    area foto (thumbnail di daftar dan foto besar di detail) tidak
@@ -112,9 +125,16 @@ const RIP_URL =
 const PANDUAN_URL =
   "https://polbat-my.sharepoint.com/:b:/g/personal/p3m_polibatam_ac_id/IQAI9PcvgLjgQriZuVKH8eW8AX72_cv1jt0xpUUQW5m2tKc?e=pSyo2v";
 
-const ALL_PROGRAMS = "Semua Program";
 const ALL_YEARS = "Semua Tahun";
+
+/* jumlah pengabdian per halaman di halaman daftar lengkap */
 const PAGE_SIZE = 5;
+
+/* jumlah pengabdian maksimal yang tampil di tiap card bidang. Kalau
+   lebih banyak, muncul tombol "Lihat lebih banyak" yang membuka halaman
+   daftar lengkap bidang itu. */
+const FOCUS_PREVIEW = 2;
+
 
 type ProgramItem = {
   title: string;
@@ -138,19 +158,18 @@ const programGroups: ProgramGroup[] = [
     id: "Internal",
     title: "Program Internal",
     description:
-      "Pengabdian yang bersumber dari Politeknik Negeri Batam, melalui penugasan dan aktivitas PBL. Proposal diusulkan melalui SIMP3M.",
+      "Pengabdian dari Politeknik Negeri Batam. Proposal diajukan lewat SIMP3M.",
     icon: Building2,
     items: [
       {
         title: "Penugasan Polibatam",
-        description:
-          "Pengabdian yang ditugaskan oleh Politeknik Negeri Batam. Reviu substantif tidak dilakukan untuk pengabdian penugasan.",
+        description: "Pengabdian yang ditugaskan oleh Politeknik Negeri Batam.",
         icon: FileText,
       },
       {
         title: "Hibah PBL",
         description:
-          "Pengabdian melalui aktivitas Project, Product, atau Problem Based Learning. Pelaksanaannya diatur terpisah dengan tetap berpedoman pada alur pengajuan umum.",
+          "Pengabdian melalui kegiatan Project, Product, atau Problem Based Learning.",
         icon: Layers,
       },
     ],
@@ -159,25 +178,23 @@ const programGroups: ProgramGroup[] = [
     id: "Eksternal",
     title: "Program Eksternal",
     description:
-      "Pengabdian dengan pendanaan dari luar Politeknik Negeri Batam: BIMA, CSR, dan sumber lain yang sah dari dalam maupun luar negeri.",
+      "Pengabdian dengan pendanaan dari luar Politeknik Negeri Batam.",
     icon: Globe,
     items: [
       {
         title: "Pengabdian BIMA",
-        description:
-          "Hibah nasional Kemdiktisaintek melalui aplikasi Basis Informasi Penelitian dan PkM (BIMA).",
+        description: "Hibah nasional Kemdiktisaintek lewat aplikasi BIMA.",
         icon: ClipboardList,
       },
       {
         title: "Pengabdian CSR",
-        description:
-          "Pengabdian dalam bentuk Corporate Social Responsibility (CSR) bersama mitra.",
+        description: "Pengabdian CSR bersama mitra.",
         icon: Handshake,
       },
       {
         title: "Kerja Sama dan Sumber Lainnya",
         description:
-          "Kerja sama dengan lembaga lain di dalam dan luar negeri, dana mandiri, dan dana masyarakat.",
+          "Kerja sama dengan lembaga lain, dana mandiri, dan dana masyarakat.",
         icon: WalletCards,
       },
     ],
@@ -185,39 +202,40 @@ const programGroups: ProgramGroup[] = [
 ];
 
 /* Tahapan mengacu pada Buku Panduan Penelitian dan PkM 2026
-   (Gambar 4 dan bagian 15). */
+   (Gambar 4 dan bagian 15). Deskripsi dibuat singkat; rincian
+   lengkap ada di buku panduan. */
 const serviceStages = [
   {
     title: "Pengumuman",
-    desc: "Jadwal setiap tahapan disampaikan melalui email atau website P3M.",
+    desc: "Jadwal diumumkan lewat email atau website P3M.",
   },
   {
     title: "Pengusulan",
-    desc: "Proposal diunggah melalui SIMP3M, usulan didaftarkan di platform PBL, dan disetujui ketua jurusan.",
+    desc: "Unggah proposal di SIMP3M dan daftarkan usulan di platform PBL.",
   },
   {
-    title: "Penyeleksian atau penunjukan",
-    desc: "Reviu administratif, reviu substantif, dan seleksi oleh reviewer. Sebelumnya, usulan ditinjau oleh Shilau.",
+    title: "Seleksi",
+    desc: "Proposal direviu dan diseleksi oleh reviewer.",
   },
   {
     title: "Penetapan",
-    desc: "Judul yang didanai ditetapkan berdasarkan hasil seleksi dan ketersediaan dana, lalu proposal diperbaiki dan SP3 ditandatangani.",
+    desc: "Judul yang didanai ditetapkan dan SP3 ditandatangani.",
   },
   {
     title: "Pelaksanaan",
-    desc: "Diawali kontrak perjanjian. Dana tahap I sebesar 70% dicairkan sesuai SP3.",
+    desc: "Kontrak ditandatangani, dana tahap I (70%) dicairkan.",
   },
   {
     title: "Pemantauan dan evaluasi",
-    desc: "Monitoring dilakukan setiap dua bulan, dan seminar reviu hasil diadakan saat kegiatan mencapai 70% waktu pelaksanaan.",
+    desc: "Monitoring dilakukan berkala dan seminar reviu hasil digelar.",
   },
   {
     title: "Pelaporan",
-    desc: "Laporan kemajuan dan laporan akhir, paling lambat dua pekan setelah monitoring. Dana tahap II sebesar 30% dicairkan sesuai SP3.",
+    desc: "Kirim laporan kemajuan dan laporan akhir. Dana tahap II (30%) dicairkan.",
   },
   {
     title: "Penilaian luaran",
-    desc: "Penilaian dan validasi luaran kegiatan pengabdian.",
+    desc: "Luaran kegiatan dinilai dan divalidasi.",
   },
 ];
 
@@ -297,20 +315,84 @@ function fromApi(item: ApiCommunityService): CommunityService {
   };
 }
 
-/* Pilihan filter: semua, induk program, lalu tiap anak */
-const programOptions = [
-  ALL_PROGRAMS,
-  ...programGroups.map((group) => group.title),
-  ...programGroups.flatMap((group) => group.items.map((item) => item.title)),
+/* =========================================================
+   BIDANG FOKUS RISET (8 prioritas, sama dengan halaman Penelitian)
+   `title` harus sama persis dengan isi kolom `bidang` pada data
+   pengabdian (huruf besar/kecil dan spasi berlebih diabaikan).
+   `slug` dipakai untuk alamat halaman daftar: #lihat-bidang-<slug>.
+   Di form admin, kolom Bidang sebaiknya berupa dropdown dengan
+   8 pilihan ini, bukan teks bebas, supaya pengelompokan akurat.
+========================================================= */
+
+type FocusArea = {
+  title: string;
+  slug: string;
+  icon: LucideIcon;
+};
+
+const focusAreas: FocusArea[] = [
+  {
+    title: "Ketahanan Pangan dan Pertanian",
+    slug: "pangan",
+    icon: Wheat,
+  },
+  {
+    title: "Transisi Energi, Material, dan Manufaktur",
+    slug: "energi",
+    icon: Zap,
+  },
+  {
+    title: "Kesehatan dan Kemandirian Obat Nasional",
+    slug: "kesehatan",
+    icon: HeartPulse,
+  },
+  {
+    title: "Rekayasa dan Teknologi Digital (AI, IoT, Semikonduktor)",
+    slug: "digital",
+    icon: Cpu,
+  },
+  { title: "Pertahanan dan Keamanan", slug: "pertahanan", icon: ShieldCheck },
+  { title: "Kemaritiman", slug: "kemaritiman", icon: Anchor },
+  { title: "Industri dan Hilirisasi", slug: "industri", icon: Factory },
+  {
+    title: "Kemandirian Sosial dan Budaya",
+    slug: "sosial",
+    icon: Users,
+  },
 ];
 
-function matchesProgram(service: CommunityService, selected: string) {
-  if (selected === ALL_PROGRAMS) return true;
+const normalize = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
 
-  const group = programGroups.find((item) => item.title === selected);
-  if (group) return service.group === group.id;
+/* satu card bidang (8 bidang prioritas) */
+type BidangGroup = {
+  slug: string;
+  title: string;
+  icon: LucideIcon;
+  items: CommunityService[];
+};
 
-  return service.program === selected;
+/* Satu halaman daftar lengkap (bidang, program, atau kelompok program) */
+type ListingInfo = {
+  eyebrow: string;
+  title: string;
+  icon: LucideIcon;
+  items: CommunityService[];
+  backHash: string;
+  backLabel: string;
+};
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/* terbaru dulu: tahun besar ke kecil, lalu id besar ke kecil */
+function byNewest(a: CommunityService, b: CommunityService) {
+  return Number(b.year) - Number(a.year) || Number(b.id) - Number(a.id);
 }
 
 function getPageItems(total: number, current: number): (number | "gap")[] {
@@ -504,19 +586,19 @@ function SectionTitle({
   description?: string;
 }) {
   return (
-    <Reveal className="mb-9 md:mb-12">
+    <Reveal className="mb-8 md:mb-10">
       {eyebrow && (
         <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
           {eyebrow}
         </p>
       )}
 
-      <h2 className="max-w-[720px] text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2A1A] sm:text-[30px] md:text-[34px]">
+      <h2 className="max-w-[640px] text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2A1A] sm:text-[30px] md:text-[34px]">
         {title}
       </h2>
 
       {description && (
-        <p className="mt-3 max-w-[620px] text-[14px] leading-[1.75] text-[#5E6B58]">
+        <p className="mt-3 max-w-[560px] text-[14px] leading-[1.75] text-[#5E6B58]">
           {description}
         </p>
       )}
@@ -532,7 +614,10 @@ function SectionTitle({
       mengembalikan ke daftar)
 ========================================================= */
 
+/* halaman daftar lengkap: #lihat-bidang-<slug>, #lihat-program-<slug>,
+   #lihat-kelompok-<slug> */
 const DETAIL_HASH = "#detail-";
+const LIST_HASH = "#lihat-";
 
 /* Lompat langsung tanpa animasi. Karena html memakai
    scroll-behavior: smooth, tanpa ini halaman "meluncur" panjang
@@ -548,19 +633,19 @@ function jumpTo(target: HTMLElement | null) {
 }
 
 export default function PengabdianPage() {
-  const [search, setSearch] = useState("");
-  const [program, setProgram] = useState(ALL_PROGRAMS);
-  const [year, setYear] = useState(ALL_YEARS);
-  const [page, setPage] = useState(1);
   const [activeGroupId, setActiveGroupId] = useState<ProgramGroup["id"] | null>(
     null
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const prevSelected = useRef<string | null>(null);
+  /* halaman daftar lengkap yang sedang dibuka (dari hash URL) */
+  const [listKey, setListKey] = useState<string | null>(null);
+  const prevView = useRef<string | null>(null);
 
   /* animasi hero (hanya di tampilan daftar, yang punya hero) */
   const reduceMotion = usePrefersReducedMotion();
-  const heroRef = useHeroScroll<HTMLElement>(reduceMotion || selectedId !== null);
+  const heroRef = useHeroScroll<HTMLElement>(
+    reduceMotion || selectedId !== null || listKey !== null
+  );
 
   /* data pengabdian dari API */
   const [communityServices, setCommunityServices] = useState<
@@ -603,13 +688,21 @@ export default function PengabdianPage() {
     };
   }, []);
 
-  /* baca id detail dari hash URL (juga untuk tombol back/forward browser) */
+  /* baca detail / daftar lengkap dari hash URL (juga untuk tombol
+     back/forward browser) */
   useEffect(() => {
     const readHash = () => {
       const hash = window.location.hash;
+
       setSelectedId(
         hash.startsWith(DETAIL_HASH)
           ? decodeURIComponent(hash.slice(DETAIL_HASH.length))
+          : null
+      );
+
+      setListKey(
+        hash.startsWith(LIST_HASH)
+          ? decodeURIComponent(hash.slice(LIST_HASH.length))
           : null
       );
     };
@@ -619,20 +712,24 @@ export default function PengabdianPage() {
     return () => window.removeEventListener("hashchange", readHash);
   }, []);
 
-  /* atur posisi scroll saat pindah daftar <-> detail */
-  useEffect(() => {
-    if (selectedId) {
-      jumpTo(null);
-    } else if (prevSelected.current) {
-      jumpTo(document.getElementById("daftar-pengabdian"));
-    }
-    prevSelected.current = selectedId;
-  }, [selectedId]);
+  /* atur posisi scroll saat pindah daftar <-> detail <-> daftar lengkap */
+  const viewKey = selectedId
+    ? `detail:${selectedId}`
+    : listKey
+      ? `list:${listKey}`
+      : null;
 
-  /* kembali ke halaman 1 saat filter berubah */
   useEffect(() => {
-    setPage(1);
-  }, [search, program, year]);
+    if (viewKey) {
+      jumpTo(null);
+    } else if (prevView.current) {
+      const target =
+        document.getElementById(window.location.hash.slice(1)) ??
+        document.getElementById("daftar-pengabdian");
+      jumpTo(target);
+    }
+    prevView.current = viewKey;
+  }, [viewKey]);
 
   const closeDetail = () => {
     window.location.hash = "daftar-pengabdian";
@@ -652,64 +749,94 @@ export default function PengabdianPage() {
     document.getElementById("program")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  /* pilih program dari kartu program, lalu geser ke daftar */
-  const showProgram = (title: string) => {
-    setProgram(title);
-    setYear(ALL_YEARS);
-    setSearch("");
-    document
-      .getElementById("daftar-pengabdian")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const goToPage = (next: number) => {
-    setPage(next);
-    document
-      .getElementById("daftar-pengabdian")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const selectedService = communityServices.find(
     (service) => service.id === selectedId
   );
 
-  const filteredServices = useMemo(() => {
-    const keyword = search.toLowerCase();
-
-    return communityServices.filter((service) => {
-      const matchSearch =
-        service.title.toLowerCase().includes(keyword) ||
-        service.leader.toLowerCase().includes(keyword) ||
-        service.field.toLowerCase().includes(keyword);
-
-      const matchYear = year === ALL_YEARS || service.year === year;
-
-      return matchSearch && matchesProgram(service, program) && matchYear;
-    });
-  }, [communityServices, search, program, year]);
-
-  /* pilihan tahun diambil dari data yang ada */
-  const yearOptions = useMemo(
-    () => [
-      ALL_YEARS,
-      ...Array.from(new Set(communityServices.map((service) => service.year))).sort(
-        (a, b) => Number(b) - Number(a)
-      ),
-    ],
+  /* pengabdian per bidang prioritas, terbaru dulu. Kedelapan bidang
+     selalu tampil. */
+  const bidangGroups = useMemo<BidangGroup[]>(
+    () =>
+      focusAreas.map((area) => ({
+        slug: area.slug,
+        title: area.title,
+        icon: area.icon,
+        items: communityServices
+          .filter(
+            (service) => normalize(service.field) === normalize(area.title)
+          )
+          .sort(byNewest),
+      })),
     [communityServices]
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredServices.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const visibleServices = filteredServices.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  /* isi halaman daftar lengkap sesuai hash */
+  const listing = useMemo<ListingInfo | null>(() => {
+    if (!listKey) return null;
+
+    if (listKey.startsWith("bidang-")) {
+      const slug = listKey.slice("bidang-".length);
+      const group = bidangGroups.find((item) => item.slug === slug);
+
+      return {
+        eyebrow: "Bidang Pengabdian",
+        title: group
+          ? group.title
+          : loading
+            ? "Memuat data..."
+            : "Bidang tidak ditemukan",
+        icon: group ? group.icon : Layers,
+        items: group ? group.items : [],
+        backHash: "daftar-pengabdian",
+        backLabel: "Kembali ke Eksplorasi Pengabdian",
+      };
+    }
+
+    if (listKey.startsWith("program-")) {
+      const slug = listKey.slice("program-".length);
+      const item = programGroups
+        .flatMap((group) => group.items)
+        .find((entry) => slugify(entry.title) === slug);
+
+      if (!item) return null;
+
+      return {
+        eyebrow: "Program Pengabdian",
+        title: item.title,
+        icon: item.icon,
+        items: communityServices
+          .filter((service) => service.program === item.title)
+          .sort(byNewest),
+        backHash: "program",
+        backLabel: "Kembali ke Program Pengabdian",
+      };
+    }
+
+    if (listKey.startsWith("kelompok-")) {
+      const slug = listKey.slice("kelompok-".length);
+      const group = programGroups.find((entry) => slugify(entry.title) === slug);
+
+      if (!group) return null;
+
+      return {
+        eyebrow: "Program Pengabdian",
+        title: group.title,
+        icon: group.icon,
+        items: communityServices
+          .filter((service) => service.group === group.id)
+          .sort(byNewest),
+        backHash: "program",
+        backLabel: "Kembali ke Program Pengabdian",
+      };
+    }
+
+    return null;
+  }, [listKey, bidangGroups, communityServices, loading]);
 
   return (
     <main
       className={`${poppins.className} ${
-        selectedService ? "" : "-mt-[72px]"
+        selectedService || listing ? "" : "-mt-[72px]"
       } overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
     >
       <ScrollProgress />
@@ -720,6 +847,16 @@ export default function PengabdianPage() {
           service={selectedService}
           communityServices={communityServices}
           onBack={closeDetail}
+        />
+      ) : listing ? (
+        <ServiceListing
+          key={listKey}
+          info={listing}
+          loading={loading}
+          loadError={loadError}
+          onBack={() => {
+            window.location.hash = listing.backHash;
+          }}
         />
       ) : (
         <>
@@ -749,11 +886,11 @@ export default function PengabdianPage() {
                 </h1>
 
                 <p
-                  className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+                  className="timbul mx-auto mt-5 max-w-[560px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
                   style={delayStyle(320)}
                 >
-                  Informasi program, pendanaan, tahapan, dan kegiatan
-                  pengabdian kepada masyarakat Politeknik Negeri Batam.
+                  Program, tahapan, dan kegiatan pengabdian kepada masyarakat
+                  Politeknik Negeri Batam.
                 </p>
               </div>
             </div>
@@ -765,7 +902,7 @@ export default function PengabdianPage() {
 
           <section
             id="rip-pengabdian"
-            className="scroll-mt-20 bg-white py-20 md:py-28"
+            className="scroll-mt-20 bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <Reveal>
@@ -773,25 +910,16 @@ export default function PengabdianPage() {
                   Arah Pengabdian
                 </p>
 
-                <h2 className="mt-2 max-w-[760px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
+                <h2 className="mt-2 max-w-[640px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
                   Pengabdian yang terarah dan berdampak
                 </h2>
               </Reveal>
 
               <Reveal delay={100} className="mt-5">
-                <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Rencana Induk Pengabdian merupakan dokumen yang menjadi
-                  acuan dalam pengembangan kegiatan pengabdian kepada
-                  masyarakat di lingkungan Politeknik Negeri Batam.
-                </p>
-              </Reveal>
-
-              <Reveal delay={200} className="mt-4">
-                <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Melalui RIP Pengabdian, kegiatan diarahkan untuk mendukung
-                  pemberdayaan masyarakat, penerapan ilmu pengetahuan dan
-                  teknologi, serta menghasilkan kegiatan yang memberikan
-                  manfaat nyata bagi masyarakat.
+                <p className="max-w-[640px] text-[14px] leading-[1.75] text-[#5E6B58]">
+                  Rencana Induk Pengabdian menjadi acuan pengembangan kegiatan
+                  pengabdian kepada masyarakat di Politeknik Negeri Batam,
+                  agar memberi manfaat nyata bagi masyarakat.
                 </p>
               </Reveal>
 
@@ -824,7 +952,7 @@ export default function PengabdianPage() {
 
           <section
             id="program"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <div key={activeGroup?.id ?? "induk"}>
@@ -866,10 +994,9 @@ export default function PengabdianPage() {
                             delay={index * 90}
                             className="flex"
                           >
-                            <button
-                              type="button"
-                              onClick={() => showProgram(item.title)}
-                              className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-8"
+                            <a
+                              href={`${LIST_HASH}program-${slugify(item.title)}`}
+                              className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-6 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-7"
                             >
                               {/* sapuan warna saat hover */}
                               <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
@@ -886,7 +1013,7 @@ export default function PengabdianPage() {
                                 {item.description}
                               </span>
 
-                              <span className="mt-auto flex items-center justify-between gap-3 pt-6">
+                              <span className="mt-auto flex items-center justify-between gap-3 pt-5">
                                 <span className="text-[12px] font-medium text-[#5E6B58]">
                                   {total} pengabdian
                                 </span>
@@ -901,16 +1028,15 @@ export default function PengabdianPage() {
                                   />
                                 </span>
                               </span>
-                            </button>
+                            </a>
                           </Reveal>
                         );
                       })}
                     </div>
 
                     <Reveal delay={200} className="mt-6">
-                      <button
-                        type="button"
-                        onClick={() => showProgram(activeGroup.title)}
+                      <a
+                        href={`${LIST_HASH}kelompok-${slugify(activeGroup.title)}`}
                         className="group inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                       >
                         Lihat semua pengabdian {activeGroup.title.toLowerCase()}
@@ -920,7 +1046,7 @@ export default function PengabdianPage() {
                           aria-hidden
                           className="transition-transform duration-300 group-hover:translate-x-1"
                         />
-                      </button>
+                      </a>
                     </Reveal>
                   </>
                 ) : (
@@ -929,7 +1055,7 @@ export default function PengabdianPage() {
                     <SectionTitle
                       eyebrow="Program Pengabdian"
                       title="Temukan skema pengabdian yang sesuai"
-                      description="Pilih kelompok program, lalu pilih sub program untuk melihat daftar pengabdiannya."
+                      description="Pilih kelompok program untuk melihat sub programnya."
                     />
 
                     <div className="grid gap-6 md:grid-cols-2">
@@ -945,7 +1071,7 @@ export default function PengabdianPage() {
                             <button
                               type="button"
                               onClick={() => openGroup(group.id)}
-                              className="group relative flex min-h-[260px] w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-8 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-10"
+                              className="group relative flex min-h-[240px] w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-8 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-10"
                             >
                               {/* sapuan warna saat hover */}
                               <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
@@ -958,7 +1084,7 @@ export default function PengabdianPage() {
                                 {group.title}
                               </span>
 
-                              <span className="mt-2.5 block max-w-[440px] text-[14px] leading-[1.75] text-[#5E6B58]">
+                              <span className="mt-2.5 block max-w-[380px] text-[14px] leading-[1.75] text-[#5E6B58]">
                                 {group.description}
                               </span>
 
@@ -994,13 +1120,13 @@ export default function PengabdianPage() {
 
           <section
             id="tahapan"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <SectionTitle
                 eyebrow="Alur Pengabdian"
                 title="Bagaimana proses pengabdian?"
-                description="Tahapan pengelolaan pengabdian melalui SIMP3M, mulai dari pengumuman hingga penilaian luaran. Persyaratan pengusul program eksternal mengikuti panduan pemberi dana."
+                description="Delapan tahap, dari pengumuman sampai penilaian luaran."
               />
 
               <div className="relative">
@@ -1029,7 +1155,7 @@ export default function PengabdianPage() {
                               {stage.title}
                             </p>
 
-                            <p className="mt-0.5 text-[12.5px] leading-[1.6] text-[#5E6B58]">
+                            <p className="mt-0.5 max-w-[560px] text-[12.5px] leading-[1.6] text-[#5E6B58]">
                               {stage.desc}
                             </p>
                           </div>
@@ -1045,7 +1171,7 @@ export default function PengabdianPage() {
                   href={SIMP3M_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-300 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                  className="group inline-flex items-center gap-2.5 rounded-lg bg-[#31551F] px-5 py-3 text-[13px] font-semibold leading-none text-white shadow-[0_4px_14px_rgba(49,85,31,0.18)] transition-all duration-300 hover:bg-[#3F6B28] hover:shadow-[0_8px_22px_rgba(49,85,31,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                 >
                   Ajukan proposal melalui SIMP3M
                   <ArrowRight
@@ -1060,7 +1186,7 @@ export default function PengabdianPage() {
                   href={PBL_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md border border-[#31551F] bg-white px-5 py-2.5 text-[13px] font-semibold text-[#31551F] transition-all duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                  className="group inline-flex items-center gap-2.5 rounded-lg border border-[#31551F] bg-white px-5 py-3 text-[13px] font-semibold leading-none text-[#31551F] transition-all duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                 >
                   Daftarkan usulan di platform PBL
                   <ArrowRight
@@ -1075,225 +1201,115 @@ export default function PengabdianPage() {
           </section>
 
           {/* =====================================================
-              DAFTAR PENGABDIAN
+              EKSPLORASI PENGABDIAN (paling bawah)
+              8 card bidang prioritas riset (sama dengan Penelitian),
+              putih, 2 kolom, sebaris otomatis sama
+              tinggi. Tiap card maksimal 2 pengabdian (baris polos tanpa
+              card); kalau lebih, tombol "Lihat lebih banyak" membuka
+              halaman daftar lengkap bidang itu (dengan cari, filter
+              tahun, dan halaman).
           ===================================================== */}
 
           <section
             id="daftar-pengabdian"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <SectionTitle
                 eyebrow="Data Pengabdian"
                 title="Eksplorasi kegiatan pengabdian"
-                description="Temukan kegiatan pengabdian kepada masyarakat yang dilaksanakan di lingkungan Politeknik Negeri Batam."
+                description="Temukan kegiatan pengabdian berdasarkan delapan bidang prioritas."
               />
 
-              {/* FILTER */}
-              <Reveal>
-                <div className="rounded-2xl border border-[#D9E2D3] bg-white p-3 shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
-                  <div className="grid gap-2 md:grid-cols-[1fr_260px_160px]">
-                    {/* SEARCH */}
-                    <div className="relative">
-                      <Search
-                        size={16}
-                        aria-hidden
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5E6B58]"
-                      />
+              <div className="grid gap-6 md:grid-cols-2">
+                {bidangGroups.map((group) => {
+                  const GroupIcon = group.icon;
+                  const total = group.items.length;
+                  const visible = group.items.slice(0, FOCUS_PREVIEW);
+                  const remaining = total - visible.length;
 
-                      <input
-                        type="text"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Cari pengabdian atau nama ketua..."
-                        aria-label="Cari pengabdian atau nama ketua"
-                        className="h-11 w-full rounded-xl border border-transparent bg-[#F6F9F3] pl-10 pr-3 text-[13.5px] text-[#1F2A1A] outline-none transition-all placeholder:text-[#8A9684] focus:border-[#31551F] focus:bg-white"
-                      />
-                    </div>
-
-                    {/* PROGRAM */}
-                    <SelectField
-                      label="Program"
-                      value={program}
-                      onChange={setProgram}
-                      options={programOptions}
-                    />
-
-                    {/* TAHUN */}
-                    <SelectField
-                      label="Tahun"
-                      value={year}
-                      onChange={setYear}
-                      options={yearOptions}
-                    />
-                  </div>
-                </div>
-              </Reveal>
-
-              {/* HASIL (model list, klik kartu membuka detail) */}
-              <div className="mt-6 space-y-3">
-                {visibleServices.map((service, index) => (
-                  <Reveal key={service.id} delay={index * 90}>
-                    <a
-                      href={`${DETAIL_HASH}${encodeURIComponent(service.id)}`}
-                      aria-label={`Lihat detail: ${service.title}`}
-                      className="group block w-full rounded-2xl border border-[#D9E2D3] bg-white p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-5"
-                    >
-                      <span className="flex items-center gap-4 md:gap-5">
-                        {/* THUMBNAIL (hanya tampil kalau ada gambar) */}
-                        {service.image && (
-                          <span className="relative h-[64px] w-[88px] shrink-0 overflow-hidden rounded-xl bg-[#EEF4EA] sm:h-[76px] sm:w-[108px]">
-                            <Image
-                              src={service.image}
-                              unoptimized
-                              alt={service.title}
-                              fill
-                              quality={90}
-                              sizes="(max-width: 640px) 88px, 108px"
-                              className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          </span>
-                        )}
-
-                        {/* ISI */}
-                        <span className="block min-w-0 flex-1">
-                          <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                            <span className="rounded-md bg-[#31551F] px-2 py-0.5 text-[11px] font-semibold text-white">
-                              {service.group}
-                            </span>
-
-                            <span className="rounded-md bg-[#EEF4EA] px-2 py-0.5 text-[11px] font-semibold text-[#3F6B28]">
-                              {service.program}
-                            </span>
-
-                            <span className="text-[11.5px] font-medium text-[#5E6B58]">
-                              {service.year}
-                            </span>
-                          </span>
-
-                          <span className="line-clamp-2 block text-[14px] font-semibold leading-[1.55] tracking-[-0.005em] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[15px]">
-                            {service.title}
-                          </span>
-
-                          <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                            <span className="text-[12.5px] text-[#5E6B58]">
-                              <span className="font-medium text-[#2F3B2A]">
-                                Ketua Pengusul:
-                              </span>{" "}
-                              {service.leader}
-                            </span>
-
-                            {service.field && (<span className="text-[12.5px] text-[#5E6B58]">
-                              <span className="font-medium text-[#2F3B2A]">
-                                Bidang:
-                              </span>{" "}
-                              {service.field}
-                            </span>)}
-
-                            {service.partner && (
-                              <span className="text-[12.5px] text-[#5E6B58]">
-                                <span className="font-medium text-[#2F3B2A]">
-                                  Mitra:
-                                </span>{" "}
-                                {service.partner}
-                              </span>
-                            )}
-                          </span>
-                        </span>
-
-                        {/* DETAIL (di HP hanya panah) */}
-                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-[#31551F] sm:px-2">
-                          <span className="hidden sm:inline">Lihat Detail</span>
-                          <ChevronRight
-                            size={17}
-                            strokeWidth={2.2}
+                  return (
+                    <Reveal key={group.slug} className="h-full">
+                      <article className="flex h-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-7 md:p-9">
+                        {/* KEPALA CARD */}
+                        <header className="flex items-center gap-5">
+                          <GroupIcon
+                            size={32}
+                            strokeWidth={1.5}
                             aria-hidden
-                            className="transition-transform duration-300 group-hover:translate-x-1"
+                            className="shrink-0 text-[#31551F]"
                           />
-                        </span>
-                      </span>
-                    </a>
-                  </Reveal>
-                ))}
+
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-[#1F2A1A] md:text-[18px]">
+                              {group.title}
+                            </h3>
+
+                            <p className="mt-1.5 text-[12.5px] font-medium text-[#3F6B28]">
+                              {total} pengabdian
+                            </p>
+                          </div>
+                        </header>
+
+                        {/* DAFTAR PENGABDIAN (baris polos, tanpa card) */}
+                        <div className="mt-6 border-t border-[#D9E2D3]">
+                          {visible.length > 0 ? (
+                            <ul className="divide-y divide-[#D9E2D3]">
+                              {visible.map((service) => (
+                                <li key={service.id}>
+                                  <ServiceRow service={service} />
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="pt-6 text-[13px] leading-[1.6] text-[#5E6B58]">
+                              {loading
+                                ? "Memuat data pengabdian..."
+                                : loadError ||
+                                  "Belum ada pengabdian pada bidang ini."}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* TOMBOL (hanya kalau pengabdiannya lebih dari 2),
+                            selalu menempel di bagian bawah card */}
+                        {remaining > 0 && (
+                          <div className="mt-auto pt-6">
+                            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-[#D9E2D3] pt-5">
+                              <p className="text-[12.5px] leading-none text-[#5E6B58]">
+                                Menampilkan{" "}
+                                <span className="font-semibold text-[#2F3B2A]">
+                                  {visible.length}
+                                </span>{" "}
+                                dari{" "}
+                                <span className="font-semibold text-[#2F3B2A]">
+                                  {total}
+                                </span>{" "}
+                                pengabdian
+                              </p>
+
+                              <a
+                                href={`${LIST_HASH}bidang-${group.slug}`}
+                                className="group inline-flex items-center gap-2 rounded-lg bg-[#31551F] py-2.5 pl-4 pr-3.5 text-[13px] font-semibold leading-none text-white shadow-[0_4px_14px_rgba(49,85,31,0.18)] transition-all duration-300 hover:bg-[#3F6B28] hover:shadow-[0_8px_22px_rgba(49,85,31,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                              >
+                                Lihat lebih banyak
+                                <ArrowRight
+                                  size={15}
+                                  strokeWidth={2.2}
+                                  aria-hidden
+                                  className="transition-transform duration-300 group-hover:translate-x-1"
+                                />
+                                <span className="sr-only"> {group.title}</span>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    </Reveal>
+                  );
+                })}
               </div>
 
-              {/* KOSONG */}
-              {filteredServices.length === 0 && (
-                <div className="mt-6 rounded-2xl border border-dashed border-[#B9CBB0] bg-white px-5 py-14 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF4EA] text-[#31551F]">
-                    <Search size={20} aria-hidden />
-                  </div>
-
-                  <p className="mt-4 text-[14.5px] font-semibold text-[#1F2A1A]">
-                    {loading
-                      ? "Memuat data pengabdian..."
-                      : loadError
-                        ? loadError
-                        : communityServices.length === 0
-                          ? "Belum ada data pengabdian."
-                          : "Pengabdian tidak ditemukan."}
-                  </p>
-
-                  <p className="mt-1 text-[13.5px] text-[#5E6B58]">
-                    {communityServices.length > 0 &&
-                      "Coba gunakan kata kunci atau filter yang berbeda."}
-                  </p>
-                </div>
-              )}
-
-              {/* PAGINATION (tampil kalau lebih dari satu halaman) */}
-              {totalPages > 1 && (
-                <nav
-                  aria-label="Halaman daftar pengabdian"
-                  className="mt-8 flex items-center justify-center gap-1.5"
-                >
-                  <button
-                    type="button"
-                    aria-label="Halaman sebelumnya"
-                    disabled={currentPage === 1}
-                    onClick={() => goToPage(currentPage - 1)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <ChevronLeft size={16} aria-hidden />
-                  </button>
-
-                  {getPageItems(totalPages, currentPage).map((item, index) =>
-                    item === "gap" ? (
-                      <span
-                        key={`gap-${index}`}
-                        className="px-1 text-[13px] text-[#A3AE9E]"
-                      >
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={item}
-                        type="button"
-                        aria-label={`Halaman ${item}`}
-                        aria-current={item === currentPage ? "page" : undefined}
-                        onClick={() => goToPage(item)}
-                        className={`h-9 w-9 rounded-lg text-[12.5px] font-semibold transition-all duration-300 ${
-                          item === currentPage
-                            ? "bg-[#31551F] text-white"
-                            : "border border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    type="button"
-                    aria-label="Halaman berikutnya"
-                    disabled={currentPage === totalPages}
-                    onClick={() => goToPage(currentPage + 1)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <ChevronRight size={16} aria-hidden />
-                  </button>
-                </nav>
-              )}
             </div>
           </section>
         </>
@@ -1374,6 +1390,311 @@ export default function PengabdianPage() {
         }
       `}</style>
     </main>
+  );
+}
+
+/* =========================================================
+   BARIS PENGABDIAN (dipakai di card bidang dan halaman daftar lengkap)
+   Baris polos tanpa card. Thumbnail hanya tampil kalau ada gambar.
+========================================================= */
+
+function ServiceRow({
+  service,
+  large = false,
+}: {
+  service: CommunityService;
+  large?: boolean;
+}) {
+  return (
+    <a
+      href={`${DETAIL_HASH}${encodeURIComponent(service.id)}`}
+      aria-label={`Lihat detail: ${service.title}`}
+      className="group -mx-3 block rounded-xl px-3 py-5 transition-colors duration-300 hover:bg-[#F6F9F3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+    >
+      <span className="flex items-center gap-4 md:gap-5">
+        {/* THUMBNAIL (hanya tampil kalau ada gambar) */}
+        {service.image && (
+          <span
+            className={`relative shrink-0 overflow-hidden rounded-lg bg-[#EEF4EA] ${
+              large
+                ? "h-[72px] w-[128px] sm:h-[90px] sm:w-[160px]"
+                : "h-[50px] w-[88px] sm:h-[58px] sm:w-[104px]"
+            }`}
+          >
+            <Image
+              src={service.image}
+              unoptimized
+              alt=""
+              fill
+              sizes={large ? "160px" : "104px"}
+              className="object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          </span>
+        )}
+
+        <span className="block min-w-0 flex-1">
+          <span className="mb-2 flex flex-wrap items-center gap-1.5">
+            {service.group && (
+              <span className="rounded-md bg-[#31551F] px-2 py-0.5 text-[10.5px] font-semibold text-white">
+                {service.group}
+              </span>
+            )}
+
+            <span className="rounded-md bg-[#E3EEDC] px-2 py-0.5 text-[10.5px] font-semibold text-[#3F6B28]">
+              {service.program}
+            </span>
+
+            <span className="text-[11px] font-medium text-[#5E6B58]">
+              {service.year}
+            </span>
+          </span>
+
+          <span className="line-clamp-2 block text-[14.5px] font-semibold leading-[1.5] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[15px]">
+            {service.title}
+          </span>
+
+          <span className="mt-1.5 block truncate text-[12.5px] text-[#5E6B58]">
+            <span className="font-medium text-[#2F3B2A]">Ketua Pengusul:</span>{" "}
+            {service.leader}
+          </span>
+
+          {large && service.partner && (
+            <span className="mt-0.5 block truncate text-[12.5px] text-[#5E6B58]">
+              <span className="font-medium text-[#2F3B2A]">Mitra:</span>{" "}
+              {service.partner}
+            </span>
+          )}
+        </span>
+
+        <ChevronRight
+          size={18}
+          strokeWidth={2.2}
+          aria-hidden
+          className="shrink-0 text-[#31551F] transition-transform duration-300 group-hover:translate-x-1"
+        />
+      </span>
+    </a>
+  );
+}
+
+/* =========================================================
+   HALAMAN DAFTAR LENGKAP (satu bidang / program / kelompok program)
+   Punya cari, filter tahun, dan halaman 1-2-3.
+========================================================= */
+
+function ServiceListing({
+  info,
+  loading,
+  loadError,
+  onBack,
+}: {
+  info: ListingInfo;
+  loading: boolean;
+  loadError: string;
+  onBack: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [year, setYear] = useState(ALL_YEARS);
+  const [page, setPage] = useState(1);
+  const InfoIcon = info.icon;
+
+  /* kembali ke halaman 1 saat filter berubah */
+  useEffect(() => {
+    setPage(1);
+  }, [search, year]);
+
+  /* pilihan tahun diambil dari data yang ada */
+  const yearOptions = useMemo(
+    () => [
+      ALL_YEARS,
+      ...Array.from(new Set(info.items.map((service) => service.year))).sort(
+        (a, b) => Number(b) - Number(a)
+      ),
+    ],
+    [info.items]
+  );
+
+  const filtered = useMemo(() => {
+    const keyword = search.toLowerCase();
+
+    return info.items.filter((service) => {
+      const matchSearch =
+        service.title.toLowerCase().includes(keyword) ||
+        service.leader.toLowerCase().includes(keyword) ||
+        service.field.toLowerCase().includes(keyword);
+
+      return matchSearch && (year === ALL_YEARS || service.year === year);
+    });
+  }, [info.items, search, year]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visible = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const goToPage = (next: number) => {
+    setPage(next);
+    document
+      .getElementById("daftar-lengkap")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <section className="bg-white pb-16 pt-8 md:pb-24 md:pt-10">
+      <div className="mx-auto max-w-[1120px] px-5 md:px-7">
+        <button
+          type="button"
+          onClick={onBack}
+          className="group inline-flex items-center gap-2 rounded-lg text-[13px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#31551F]"
+        >
+          <ArrowLeft
+            size={15}
+            strokeWidth={2}
+            aria-hidden
+            className="transition-transform duration-300 group-hover:-translate-x-1"
+          />
+          {info.backLabel}
+        </button>
+
+        <Reveal className="mt-6">
+          <div className="flex items-center gap-4 md:gap-5">
+            <InfoIcon
+              size={40}
+              strokeWidth={1.5}
+              aria-hidden
+              className="shrink-0 text-[#31551F]"
+            />
+
+            <div className="min-w-0">
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
+                {info.eyebrow}
+              </p>
+
+              <h1 className="mt-1.5 text-[22px] font-bold leading-[1.25] tracking-[-0.02em] text-[#1F2A1A] sm:text-[26px] md:text-[30px]">
+                {info.title}
+              </h1>
+
+              <p className="mt-1.5 text-[13px] font-medium text-[#5E6B58]">
+                {info.items.length} pengabdian
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        <div id="daftar-lengkap" className="scroll-mt-20">
+          {/* FILTER */}
+          <Reveal delay={100} className="mt-8 md:mt-10">
+            <div className="rounded-2xl border border-[#D9E2D3] bg-white p-3 shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
+              <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+                <div className="relative">
+                  <Search
+                    size={16}
+                    aria-hidden
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5E6B58]"
+                  />
+
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Cari pengabdian atau nama ketua..."
+                    aria-label="Cari pengabdian atau nama ketua"
+                    className="h-11 w-full rounded-xl border border-transparent bg-[#F6F9F3] pl-10 pr-3 text-[13.5px] text-[#1F2A1A] outline-none transition-all placeholder:text-[#8A9684] focus:border-[#31551F] focus:bg-white"
+                  />
+                </div>
+
+                <SelectField
+                  label="Tahun"
+                  value={year}
+                  onChange={setYear}
+                  options={yearOptions}
+                />
+              </div>
+            </div>
+          </Reveal>
+
+          {/* HASIL */}
+          <Reveal delay={150} className="mt-6">
+            <div className="rounded-2xl border border-[#D9E2D3] bg-white px-6 py-2 md:px-10">
+              {visible.length > 0 ? (
+                <ul className="divide-y divide-[#D9E2D3]">
+                  {visible.map((service) => (
+                    <li key={service.id}>
+                      <ServiceRow service={service} large />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="py-10 text-center text-[13.5px] text-[#5E6B58]">
+                  {loading
+                    ? "Memuat data pengabdian..."
+                    : loadError ||
+                      (info.items.length === 0
+                        ? "Belum ada pengabdian pada kelompok ini."
+                        : "Pengabdian tidak ditemukan. Coba gunakan kata kunci atau filter yang berbeda.")}
+                </p>
+              )}
+            </div>
+          </Reveal>
+        </div>
+
+        {/* PAGINATION (tampil kalau lebih dari satu halaman) */}
+        {totalPages > 1 && (
+          <nav
+            aria-label="Halaman daftar pengabdian"
+            className="mt-8 flex items-center justify-center gap-1.5"
+          >
+            <button
+              type="button"
+              aria-label="Halaman sebelumnya"
+              disabled={currentPage === 1}
+              onClick={() => goToPage(currentPage - 1)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
+            >
+              <ChevronLeft size={16} aria-hidden />
+            </button>
+
+            {getPageItems(totalPages, currentPage).map((item, index) =>
+              item === "gap" ? (
+                <span
+                  key={`gap-${index}`}
+                  className="px-1 text-[13px] text-[#A3AE9E]"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  aria-label={`Halaman ${item}`}
+                  aria-current={item === currentPage ? "page" : undefined}
+                  onClick={() => goToPage(item)}
+                  className={`h-9 w-9 rounded-lg text-[12.5px] font-semibold transition-all duration-300 ${
+                    item === currentPage
+                      ? "bg-[#31551F] text-white"
+                      : "border border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
+                  }`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              aria-label="Halaman berikutnya"
+              disabled={currentPage === totalPages}
+              onClick={() => goToPage(currentPage + 1)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
+            >
+              <ChevronRight size={16} aria-hidden />
+            </button>
+          </nav>
+        )}
+      </div>
+    </section>
   );
 }
 

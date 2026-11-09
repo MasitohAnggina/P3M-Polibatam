@@ -14,9 +14,11 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   CalendarDays,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   FileText,
   Layers,
@@ -47,6 +49,10 @@ const HERO_GRADIENT = [
 
 const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
+/* Jumlah publikasi per halaman di setiap kategori.
+   Pagination baru muncul kalau isi kategori lebih dari angka ini. */
+const ITEMS_PER_PAGE = 3;
+
 /* =========================================================
    PALET WARNA (sama dengan Beranda)
    teks utama   : #1F2A1A
@@ -62,9 +68,15 @@ const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
    SKALA FONT (Poppins, sama dengan halaman lain)
    hero judul   : 36 / 44 / 52
    judul seksi  : 26 / 30 / 34
-   judul kartu  : 15 / 17
+   judul item   : 15 / 16
    isi          : 12.5-14 (leading 1.7-1.75)
    label/meta   : 10.5-12.5
+
+   DAFTAR PUBLIKASI
+   Tampilannya sederhana seperti daftar jurnal di situs Polibatam:
+   sampul polos (tanpa bayangan) di kiri; di kanan judul sebagai
+   tautan, info singkat, ringkasan, dan tautan "Lihat Detail".
+   Antar publikasi dipisah garis tipis, tanpa kotak kartu.
 ========================================================= */
 
 /* =========================================================
@@ -88,8 +100,8 @@ type PublicationItem = {
      Alamatnya: /publikasi#detail-<slug>. Kalau kosong, dibuat otomatis
      dari judul. */
   slug?: string;
-  /* link khusus (menggantikan halaman detail), mis. link eksternal;
-     dibuka di tab baru */
+  /* tautan luar (mis. ke situs jurnal); dibuka di tab baru sebagai
+     tautan tambahan di samping "Lihat Detail" */
   href?: string;
 };
 
@@ -454,8 +466,79 @@ function SelectField({
   );
 }
 
-/* Sampul publikasi: gambar jika ada dan berhasil dimuat,
-   kalau tidak dibuat sampul hijau bergaya buku */
+/* Pagination sederhana: Sebelumnya, nomor halaman, Berikutnya.
+   Hanya dirender kalau totalPages lebih dari 1. */
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+  label,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+  label: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  const navClass =
+    "inline-flex h-9 items-center gap-1 rounded-lg border border-[#D9E2D3] bg-white px-3 text-[12.5px] font-medium text-[#31551F] transition-all duration-300 hover:border-[#8DC26F] hover:bg-[#F6F9F3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] disabled:pointer-events-none disabled:opacity-40";
+
+  return (
+    <nav
+      aria-label={`Halaman ${label}`}
+      className="mt-5 flex flex-wrap items-center justify-center gap-2"
+    >
+      <button
+        type="button"
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+        className={navClass}
+      >
+        <ChevronLeft size={15} strokeWidth={2} aria-hidden />
+        <span className="hidden sm:inline">Sebelumnya</span>
+        <span className="sr-only sm:hidden">Sebelumnya</span>
+      </button>
+
+      {Array.from({ length: totalPages }, (_, index) => {
+        const number = index + 1;
+        const isActive = number === page;
+
+        return (
+          <button
+            key={number}
+            type="button"
+            onClick={() => onChange(number)}
+            aria-label={`Halaman ${number}`}
+            aria-current={isActive ? "page" : undefined}
+            className={`h-9 min-w-9 rounded-lg border px-3 text-[12.5px] font-semibold transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] ${
+              isActive
+                ? "border-[#31551F] bg-[#31551F] text-white"
+                : "border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#8DC26F] hover:bg-[#F6F9F3] hover:text-[#31551F]"
+            }`}
+          >
+            {number}
+          </button>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onChange(page + 1)}
+        disabled={page === totalPages}
+        className={navClass}
+      >
+        <span className="hidden sm:inline">Berikutnya</span>
+        <span className="sr-only sm:hidden">Berikutnya</span>
+        <ChevronRight size={15} strokeWidth={2} aria-hidden />
+      </button>
+    </nav>
+  );
+}
+
+/* Sampul publikasi: polos, tanpa bayangan, tanpa bingkai tebal
+   (seperti daftar jurnal di situs Polibatam). Gambar dipakai kalau
+   ada dan berhasil dimuat; kalau tidak, dibuat sampul hijau polos. */
 function Cover({
   cover,
   title,
@@ -473,7 +556,7 @@ function Cover({
   const showImage = Boolean(cover) && !failed;
 
   return (
-    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-[#213B14] shadow-[0_10px_24px_rgba(31,42,26,0.18)] ring-1 ring-black/5 transition-transform duration-500 group-hover:-translate-y-0.5">
+    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[3px] bg-[#EEF4EA]">
       {showImage ? (
         <Image
           src={cover as string}
@@ -486,7 +569,6 @@ function Cover({
         />
       ) : (
         <div className="absolute inset-0 flex flex-col bg-gradient-to-br from-[#213B14] via-[#31551F] to-[#3F6B28] p-3 text-white">
-          <div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-[#8DC26F]/25 blur-2xl" />
           <BookOpen
             size={16}
             strokeWidth={1.6}
@@ -499,21 +581,20 @@ function Cover({
           <p className="mt-auto text-[10px] text-white/70">{year}</p>
         </div>
       )}
-
-      {/* efek punggung buku */}
-      <span className="pointer-events-none absolute inset-y-0 left-0 w-[6px] bg-gradient-to-r from-black/25 to-transparent" />
     </div>
   );
 }
 
 /* =========================================================
-   KARTU PUBLIKASI
-   Seluruh kartu adalah link ke halaman detail
-   (/publikasi#detail-<slug>) atau ke `href` bila diisi.
-   Susunan: sampul di kiri; di kanan baris kategori/indeks + tahun,
-   judul, penulis & jurnal (satu baris), ringkasan, lalu garis
-   tipis berisi Vol/ISSN dan "Lihat Detail".
+   BARIS PUBLIKASI
+   Gaya daftar jurnal di situs Polibatam: sampul polos di kiri;
+   di kanan judul (tautan), info singkat, ringkasan, dan tautan
+   di bawahnya. Tanpa kotak kartu dan tanpa bayangan; antar
+   publikasi dipisah garis tipis dari daftar di luarnya.
 ========================================================= */
+
+const linkClass =
+  "inline-flex items-center gap-1 text-[13px] font-medium text-[#31551F] underline-offset-4 transition-colors duration-300 hover:text-[#3F6B28] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]";
 
 function PublicationCard({
   item,
@@ -522,119 +603,104 @@ function PublicationCard({
   item: PublicationItem;
   category: string;
 }) {
+  const detailHref = getDetailHash(item);
+
   return (
-    <a
-      href={item.href ?? getDetailHash(item)}
-      {...(item.href
-        ? { target: "_blank", rel: "noopener noreferrer" }
-        : {})}
-      className="group relative block overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-4 transition-all duration-500 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-5"
-    >
-      {/* sapuan warna saat hover */}
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
+    <article className="flex gap-4 py-6 sm:gap-5 md:gap-6 md:py-7">
+      {/* SAMPUL (polos) */}
+      <a
+        href={detailHref}
+        tabIndex={-1}
+        aria-hidden
+        className="block w-[88px] shrink-0 sm:w-[112px] md:w-[128px]"
+      >
+        <Cover
+          cover={item.cover}
+          title={item.title}
+          label={item.source?.name ?? category}
+          year={item.year}
+          sizes="128px"
+        />
+      </a>
 
-      <div className="flex gap-4 md:gap-5">
-        {/* SAMPUL */}
-        <div className="w-[76px] shrink-0 sm:w-[92px] md:w-[104px]">
-          <Cover
-            cover={item.cover}
-            title={item.title}
-            label={item.source?.name ?? category}
-            year={item.year}
-            sizes="104px"
-          />
-        </div>
-
-        {/* ISI */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* KATEGORI + INDEKS, TAHUN */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full bg-[#EEF4EA] px-2.5 py-1 text-[10.5px] font-semibold leading-none text-[#31551F]">
-                {category}
-              </span>
-
-              {item.index && (
-                <span className="rounded-full bg-[#31551F] px-2.5 py-1 text-[10.5px] font-semibold leading-none text-white">
-                  {item.index}
-                </span>
-              )}
-            </div>
-
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-[#667360]">
-              <CalendarDays size={13} strokeWidth={1.8} aria-hidden />
-              {item.year}
-            </span>
-          </div>
-
-          {/* JUDUL */}
-          <h4 className="mt-3 line-clamp-2 text-[14.5px] font-semibold leading-[1.5] tracking-[-0.005em] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[16px]">
+      {/* ISI */}
+      <div className="min-w-0 flex-1">
+        {/* JUDUL (tautan) */}
+        <h4 className="text-[15px] font-semibold leading-[1.5] md:text-[16px]">
+          <a
+            href={detailHref}
+            className="text-[#31551F] underline-offset-4 transition-colors duration-300 hover:text-[#3F6B28] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+          >
             {item.title}
-          </h4>
+          </a>
+        </h4>
 
-          {/* PENULIS & JURNAL (satu baris, satu garis pemisah) */}
-          {(item.authors || item.source) && (
-            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] leading-[1.6] text-[#4A5646]">
-              {item.authors && (
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <Users
-                    size={14}
-                    strokeWidth={1.7}
-                    aria-hidden
-                    className="shrink-0 text-[#3F6B28]"
-                  />
-                  <span className="line-clamp-1">{item.authors}</span>
-                </span>
-              )}
+        {/* INFO SINGKAT: kategori, indeks, tahun */}
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] leading-[1.6] text-[#667360]">
+          <span>{category}</span>
 
-              {item.source && (
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <Library
-                    size={14}
-                    strokeWidth={1.7}
-                    aria-hidden
-                    className="shrink-0 text-[#3F6B28]"
-                  />
-                  <span className="line-clamp-1 font-medium text-[#2F3B2A]">
-                    {item.source.name}
-                  </span>
-                </span>
-              )}
-            </p>
+          {item.index && (
+            <>
+              <span aria-hidden>•</span>
+              <span className="font-semibold text-[#31551F]">{item.index}</span>
+            </>
           )}
 
-          {/* RINGKASAN */}
-          {item.description && (
-            <p className="mt-2.5 line-clamp-2 text-[12.5px] leading-[1.7] text-[#667360]">
-              {item.description}
-            </p>
+          <span aria-hidden>•</span>
+          <span>{item.year}</span>
+        </p>
+
+        {/* PENULIS & SUMBER */}
+        {item.authors && (
+          <p className="mt-2.5 line-clamp-2 text-[13.5px] leading-[1.7] text-[#4A5646]">
+            <span className="font-semibold text-[#2F3B2A]">Penulis:</span>{" "}
+            {item.authors}
+          </p>
+        )}
+
+        {item.source && (
+          <p className="mt-1 line-clamp-2 text-[13.5px] leading-[1.7] text-[#4A5646]">
+            <span className="font-semibold text-[#2F3B2A]">Sumber:</span>{" "}
+            {item.source.name}
+            {item.source.detail ? `, ${item.source.detail}` : ""}
+          </p>
+        )}
+
+        {/* RINGKASAN */}
+        {item.description && (
+          <p className="mt-2.5 line-clamp-3 text-[13.5px] leading-[1.75] text-[#4A5646]">
+            {item.description}
+          </p>
+        )}
+
+        {/* TAUTAN */}
+        <p className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+          <a href={detailHref} className={linkClass}>
+            Lihat Detail
+            <ArrowRight size={14} strokeWidth={2} aria-hidden />
+          </a>
+
+          {item.href && (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
+              Buka Tautan
+              <ArrowUpRight size={14} strokeWidth={2} aria-hidden />
+              <span className="sr-only"> (membuka tab baru)</span>
+            </a>
           )}
-
-          {/* BARIS BAWAH: rincian jurnal + ajakan */}
-          <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-[#E7EDE3] pt-3">
-            <span className="line-clamp-1 text-[11.5px] text-[#667360]">
-              {item.source?.detail}
-            </span>
-
-            <span className="inline-flex shrink-0 items-center gap-1 text-[12.5px] font-semibold text-[#31551F]">
-              Lihat Detail
-              <ArrowRight
-                size={14}
-                strokeWidth={2}
-                aria-hidden
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              />
-            </span>
-          </div>
-        </div>
+        </p>
       </div>
-    </a>
+    </article>
   );
 }
 
 /* =========================================================
    TAMPILAN DETAIL PUBLIKASI
-   Dibuka dari kartu di daftar: /publikasi#detail-<slug>
+   Dibuka dari daftar: /publikasi#detail-<slug>
 ========================================================= */
 
 function PanelHeader({
@@ -723,7 +789,7 @@ function PublicationDetail({
 
           <Reveal className="mt-6">
             <div className="grid gap-6 md:grid-cols-[200px_1fr] md:gap-10">
-              {/* SAMPUL (portrait 3:4) */}
+              {/* SAMPUL (portrait 3:4, polos) */}
               <div className="mx-auto w-[160px] md:mx-0 md:w-[200px]">
                 <Cover
                   cover={item.cover}
@@ -775,6 +841,19 @@ function PublicationDetail({
                     </span>
                   </p>
                 )}
+
+                {item.href && (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${linkClass} mt-4`}
+                  >
+                    Buka Tautan
+                    <ArrowUpRight size={14} strokeWidth={2} aria-hidden />
+                    <span className="sr-only"> (membuka tab baru)</span>
+                  </a>
+                )}
               </div>
             </div>
           </Reveal>
@@ -789,7 +868,7 @@ function PublicationDetail({
             <div className="space-y-6">
               {item.description && (
                 <Reveal>
-                  <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 shadow-[0_8px_30px_rgba(31,42,26,0.05)] md:p-8">
+                  <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 md:p-8">
                     <PanelHeader icon={FileText} title="Ringkasan" />
 
                     <p className="text-[14px] leading-[1.9] text-[#667360]">
@@ -801,7 +880,7 @@ function PublicationDetail({
 
               {names.length > 0 && (
                 <Reveal delay={80}>
-                  <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 shadow-[0_8px_30px_rgba(31,42,26,0.05)] md:p-8">
+                  <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 md:p-8">
                     <PanelHeader
                       icon={Users}
                       title={`Penulis (${names.length}${hasMore ? "+" : ""})`}
@@ -842,7 +921,7 @@ function PublicationDetail({
             {/* KOLOM KANAN */}
             <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
               <Reveal delay={120}>
-                <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 shadow-[0_8px_30px_rgba(31,42,26,0.05)] md:p-7">
+                <div className="rounded-2xl border border-[#D9E2D3] bg-white p-6 md:p-7">
                   <PanelHeader icon={Layers} title="Informasi Publikasi" />
 
                   <div>
@@ -893,11 +972,8 @@ function PublicationDetail({
                   <li key={getId(other)}>
                     <Reveal delay={index * 90} className="h-full">
                       <a
-                        href={other.href ?? getDetailHash(other)}
-                        {...(other.href
-                          ? { target: "_blank", rel: "noopener noreferrer" }
-                          : {})}
-                        className="group flex h-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                        href={getDetailHash(other)}
+                        className="group flex h-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                       >
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="rounded-md bg-[#EEF4EA] px-2 py-0.5 text-[11px] font-semibold text-[#3F6B28]">
@@ -945,6 +1021,9 @@ export default function PublikasiPage() {
   const [search, setSearch] = useState("");
   const [publicationType, setPublicationType] = useState("Semua Publikasi");
   const [year, setYear] = useState("Semua Tahun");
+
+  /* halaman aktif per kategori, contoh: { "Jurnal Nasional": 2 } */
+  const [pages, setPages] = useState<Record<string, number>>({});
 
   const [entries, setEntries] = useState<PublicationEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1011,8 +1090,22 @@ export default function PublikasiPage() {
     prevSelected.current = selectedId;
   }, [selectedId]);
 
+  /* filter berubah -> semua kategori kembali ke halaman 1 */
+  useEffect(() => {
+    setPages({});
+  }, [search, publicationType, year]);
+
   const closeDetail = () => {
     window.location.hash = "publikasi";
+  };
+
+  const changePage = (category: string, page: number) => {
+    setPages((current) => ({ ...current, [category]: page }));
+
+    /* kembali ke awal kategori supaya daftar baru langsung terlihat */
+    requestAnimationFrame(() => {
+      jumpTo(document.getElementById(`kategori-${slugify(category)}`));
+    });
   };
 
   const selected = entries.find((item) => getId(item) === selectedId);
@@ -1147,7 +1240,7 @@ export default function PublikasiPage() {
 
           {/* ---------- FILTER ---------- */}
           <Reveal>
-            <div className="rounded-2xl border border-[#D9E2D3] bg-white p-4 shadow-[0_8px_30px_rgba(31,42,26,0.05)] md:p-5">
+            <div className="rounded-2xl border border-[#D9E2D3] bg-white p-4 md:p-5">
               {/* pencarian + tahun */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_200px]">
                 <div>
@@ -1258,61 +1351,86 @@ export default function PublikasiPage() {
             </div>
           ) : filteredPublications.length > 0 ? (
             <div className="mt-6 space-y-12">
-              {filteredPublications.map((publication) => (
-                <section key={publication.category}>
-                  {/* HEADER KATEGORI */}
-                  <Reveal>
-                    <div className="mb-5 flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F]">
-                        <BookOpen size={19} strokeWidth={1.8} />
-                      </span>
+              {filteredPublications.map((publication) => {
+                const totalPages = Math.ceil(
+                  publication.items.length / ITEMS_PER_PAGE
+                );
+                const currentPage = Math.min(
+                  pages[publication.category] ?? 1,
+                  totalPages
+                );
+                const visibleItems = publication.items.slice(
+                  (currentPage - 1) * ITEMS_PER_PAGE,
+                  currentPage * ITEMS_PER_PAGE
+                );
 
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-[#1F2A1A]">
-                          {publication.category}
-                        </h3>
-                        <p className="mt-0.5 text-[11.5px] text-[#667360]">
-                          {publication.items.length} publikasi
-                        </p>
+                return (
+                  <section
+                    key={publication.category}
+                    id={`kategori-${slugify(publication.category)}`}
+                    className="scroll-mt-20"
+                  >
+                    {/* HEADER KATEGORI */}
+                    <Reveal>
+                      <div className="mb-3 flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F]">
+                          <BookOpen size={19} strokeWidth={1.8} />
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-[#1F2A1A]">
+                            {publication.category}
+                          </h3>
+                          <p className="mt-0.5 text-[11.5px] text-[#667360]">
+                            {publication.items.length} publikasi
+                          </p>
+                        </div>
+
+                        {/* hanya muncul saat belum difilter per jenis */}
+                        {publicationType === "Semua Publikasi" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPublicationType(publication.category)
+                            }
+                            className="group inline-flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28]"
+                          >
+                            Lihat Semua
+                            <ChevronRight
+                              size={15}
+                              strokeWidth={2.2}
+                              aria-hidden
+                              className="transition-transform duration-300 group-hover:translate-x-1"
+                            />
+                          </button>
+                        )}
                       </div>
+                    </Reveal>
 
-                      {/* hanya muncul saat belum difilter per jenis */}
-                      {publicationType === "Semua Publikasi" && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPublicationType(publication.category)
-                          }
-                          className="group inline-flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28]"
-                        >
-                          Lihat Semua
-                          <ChevronRight
-                            size={15}
-                            strokeWidth={2.2}
-                            aria-hidden
-                            className="transition-transform duration-300 group-hover:translate-x-1"
-                          />
-                        </button>
-                      )}
-                    </div>
-                  </Reveal>
+                    {/* DAFTAR PUBLIKASI (baris polos, dipisah garis tipis) */}
+                    <ul className="divide-y divide-[#D9E2D3] border-y border-[#D9E2D3]">
+                      {visibleItems.map((item, index) => (
+                        <li key={`${publication.category}-${getId(item)}`}>
+                          <Reveal delay={Math.min(index, 4) * 60}>
+                            <PublicationCard
+                              item={item}
+                              category={publication.category}
+                            />
+                          </Reveal>
+                        </li>
+                      ))}
+                    </ul>
 
-                  {/* DAFTAR KARTU */}
-                  <div className="grid gap-4">
-                    {publication.items.map((item, index) => (
-                      <Reveal
-                        key={`${publication.category}-${item.title}`}
-                        delay={index * 80}
-                      >
-                        <PublicationCard
-                          item={item}
-                          category={publication.category}
-                        />
-                      </Reveal>
-                    ))}
-                  </div>
-                </section>
-              ))}
+                    {/* PAGINATION (muncul kalau lebih dari 3 publikasi) */}
+                    <Pagination
+                      page={currentPage}
+                      totalPages={totalPages}
+                      label={publication.category}
+                      onChange={(page) => changePage(publication.category, page)}
+                    />
+                  </section>
+                );
+              })}
             </div>
           ) : (
             /* DATA KOSONG */
@@ -1333,71 +1451,24 @@ export default function PublikasiPage() {
                 </p>
 
                 {entries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="group mt-6 inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-3 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-                >
-                  Reset Filter
-                  <ArrowRight
-                    size={15}
-                    strokeWidth={1.8}
-                    className="transition-transform duration-300 group-hover:translate-x-1"
-                  />
-                </button>
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="group mt-6 inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-3 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                  >
+                    Reset Filter
+                    <ArrowRight
+                      size={15}
+                      strokeWidth={1.8}
+                      className="transition-transform duration-300 group-hover:translate-x-1"
+                    />
+                  </button>
                 )}
               </div>
             </Reveal>
           )}
         </div>
       </section>
-
-      {/* =====================================================
-          AJAKAN (kartu hijau bertitik yang ringkas, di dalam
-          section putih supaya ada jarak sebelum footer hijau)
-      ====================================================== */}
-      <section className="bg-white pb-16 pt-2 md:pb-20 md:pt-4">
-        <div className="mx-auto max-w-[1120px] px-5 md:px-7">
-          <Reveal>
-            <div
-              className="relative overflow-hidden rounded-2xl bg-[#31551F] px-6 py-8 text-white md:px-8 md:py-9"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
-                backgroundSize: "22px 22px",
-              }}
-            >
-              <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#8DC26F]/15 blur-3xl" />
-
-              <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between md:gap-8">
-                <div className="max-w-[560px]">
-                  <h2 className="text-[20px] font-bold leading-[1.25] tracking-[-0.02em] md:text-[22px]">
-                    Temukan Publikasi Polibatam
-                  </h2>
-
-                  <p className="mt-2 text-[13px] leading-[1.7] text-white/80">
-                    Akses berbagai publikasi hasil penelitian, pengabdian, dan
-                    karya ilmiah sivitas akademika Politeknik Negeri Batam.
-                  </p>
-                </div>
-
-                <a
-                  href="#publikasi"
-                  className="group inline-flex w-fit shrink-0 items-center gap-2 rounded-md bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#31551F] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  Lihat Publikasi
-                  <ArrowRight
-                    size={14}
-                    strokeWidth={1.8}
-                    className="transition-transform duration-300 group-hover:translate-x-1"
-                  />
-                </a>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
         </>
       )}
 

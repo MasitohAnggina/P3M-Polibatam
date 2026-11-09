@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Poppins } from "next/font/google";
 
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -31,6 +32,22 @@ import {
    halaman publik (arah penelitian, kartu program, tahapan)
    adalah konten tetap di kode, jadi tidak perlu dikelola di sini.
 
+   BIDANG FOKUS wajib diisi dan dipilih dari 8 prioritas riset
+   (dropdown). Halaman publik mengelompokkan penelitian ke 8 box
+   berdasarkan bidang ini, jadi penelitian yang bidangnya kosong
+   atau tidak sesuai tidak akan tampil di halaman publik.
+   Daftar 8 bidang harus sama persis dengan:
+   - focusAreas di app/penelitian/page.tsx
+   - BIDANG di PenelitianController.php
+
+   KATEGORI mengikuti menu Publikasi di p2m.polibatam.ac.id
+   (daftar per tahun, 2010 s.d. sekarang), supaya data lama bisa
+   dimasukkan apa adanya:
+   - Program Internal  = "Penguatan Budaya Riset Dosen Politeknik
+                          Negeri Batam" (dan skema lama Dosen Muda/Madya)
+   - Program Eksternal = Kemendikbud/Kemdiktisaintek (Simlitabmas,
+                          BIMA) dan hibah luar lainnya
+
    KONTRAK API (Laravel, Sanctum):
    GET    /api/admin/penelitian        -> { data: ApiResearch[] }
    POST   /api/admin/penelitian        -> { data: ApiResearch }  (multipart)
@@ -39,9 +56,10 @@ import {
    Publik: GET /api/penelitian         -> { data: ApiResearch[] }
 
    Field multipart saat simpan:
-   judul, ketua, bidang, kelompok (Internal/Eksternal, otomatis dari
-   program), program, tahun, abstrak, anggota[], kata_kunci[],
-   gambar (file gambar apa saja, opsional), hapus_gambar (1 = hapus gambar lama).
+   judul, ketua, bidang (salah satu dari 8 bidang fokus), kelompok
+   (Internal/Eksternal, otomatis dari program), program, tahun,
+   abstrak, anggota[], kata_kunci[], gambar (file gambar apa saja,
+   opsional), hapus_gambar (1 = hapus gambar lama).
 ========================================================= */
 
 const poppins = Poppins({
@@ -118,10 +136,47 @@ function imageUrl(path: string | null): string {
 }
 
 /* =========================================================
-   PROGRAM
-   Judul program HARUS sama persis dengan judul di halaman
-   publik (programGroups pada app/penelitian/page.tsx), karena
-   halaman publik mencocokkan program lewat judulnya.
+   BIDANG FOKUS RISET (8 prioritas)
+   Harus sama persis dengan halaman publik dan controller.
+========================================================= */
+
+const FOCUS_AREAS = [
+  "Ketahanan Pangan dan Pertanian",
+  "Transisi Energi, Material, dan Manufaktur",
+  "Kesehatan dan Kemandirian Obat Nasional",
+  "Rekayasa dan Teknologi Digital (AI, IoT, Semikonduktor)",
+  "Pertahanan dan Keamanan",
+  "Kemaritiman",
+  "Industri dan Hilirisasi",
+  "Kemandirian Sosial dan Budaya",
+];
+
+const normalize = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
+
+/* nama bidang resmi kalau cocok (huruf besar/kecil diabaikan), selain itu "" */
+function canonicalFocus(value: string): string {
+  const key = normalize(value);
+  return FOCUS_AREAS.find((area) => normalize(area) === key) ?? "";
+}
+
+const isFocusArea = (value: string) => canonicalFocus(value) !== "";
+
+/* =========================================================
+   PROGRAM (skema penelitian)
+   Program diisi dengan KETIK BEBAS. Daftar di bawah hanya SARAN
+   yang muncul saat mengetik (mengikuti menu Publikasi
+   p2m.polibatam.ac.id), supaya program baru dari panduan tahun
+   berikutnya tidak perlu mengubah kode.
+
+   Kelompok (Internal/Eksternal) dipilih admin sendiri, karena
+   program baru tidak bisa ditebak kelompoknya. Kalau admin memilih
+   salah satu saran, kelompoknya terisi otomatis.
+
+   Catatan untuk halaman publik: kartu program di
+   app/penelitian/page.tsx hanya informasi (tidak lagi menjadi
+   filter daftar). Kalau Laravel memakai aturan `in:` untuk
+   `program`, ganti menjadi `required|string|max:150`.
 ========================================================= */
 
 type GroupId = "Internal" | "Eksternal";
@@ -130,19 +185,27 @@ const PROGRAM_GROUPS: { id: GroupId; label: string; programs: string[] }[] = [
   {
     id: "Internal",
     label: "Program Internal",
-    programs: ["Penelitian Penugasan Polibatam", "Penelitian PBL"],
+    programs: [
+      "Penelitian Terapan",
+      "Penelitian Kerjasama",
+      "Penelitian Penunjukan Langsung/Penugasan",
+      /* skema lama (arsip 2014-2020) */
+      "Penelitian Dosen Muda",
+      "Penelitian Dosen Madya",
+    ],
   },
   {
     id: "Eksternal",
     label: "Program Eksternal",
     programs: [
+      /* Kemendikbud lewat Simlitabmas (arsip 2022) */
+      "Penelitian Dasar Unggulan Perguruan Tinggi",
+      "Penelitian Produk Vokasi Unggulan Perguruan Tinggi",
+      "Penelitian Dosen Pemula",
+      /* Kemendikbud lewat BIMA (2023 dst.) */
+      "Penelitian Terapan Jalur Hilirisasi",
       "Penelitian BIMA",
-      "Penelitian BRIN",
-      "Penelitian KONEKSI",
-      "Penelitian BPDPKS",
-      "Penelitian Bestari-Saintek",
-      "Penelitian Pemerintah Daerah",
-      "Penelitian CSR",
+      "Penelitian Hilirisasi Riset Prioritas (HILIRISET)",
       "Penelitian Hibah Lainnya",
     ],
   },
@@ -223,17 +286,22 @@ const emptyForm: Research = {
 
 const ALL_PROGRAMS = "Semua Program";
 const ALL_YEARS = "Semua Tahun";
+const ALL_FIELDS = "Semua Bidang";
+const UNMATCHED_FIELDS = "Bidang belum sesuai";
 const PAGE_SIZE = 10;
 
-/* Tahun: dari tahun depan mundur 7 tahun */
+/* Tahun: dari tahun depan mundur sampai 2010, karena arsip
+   Publikasi di p2m.polibatam.ac.id dimulai dari tahun 2010. */
+const FIRST_YEAR = 2010;
 const thisYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => String(thisYear + 1 - i));
+const YEAR_OPTIONS = Array.from(
+  { length: thisYear + 1 - FIRST_YEAR + 1 },
+  (_, i) => String(thisYear + 1 - i)
+);
 
-const programFilterOptions = [
-  ALL_PROGRAMS,
-  ...PROGRAM_GROUPS.map((g) => g.label),
-  ...PROGRAM_GROUPS.flatMap((g) => g.programs),
-];
+const KNOWN_PROGRAMS = PROGRAM_GROUPS.flatMap((g) => g.programs);
+
+const FIELD_FILTER_OPTIONS = [ALL_FIELDS, ...FOCUS_AREAS, UNMATCHED_FIELDS];
 
 function matchesProgram(research: Research, selected: string) {
   if (selected === ALL_PROGRAMS) return true;
@@ -242,6 +310,12 @@ function matchesProgram(research: Research, selected: string) {
   if (group) return research.group === group.id;
 
   return research.program === selected;
+}
+
+function matchesField(research: Research, selected: string) {
+  if (selected === ALL_FIELDS) return true;
+  if (selected === UNMATCHED_FIELDS) return !isFocusArea(research.field);
+  return canonicalFocus(research.field) === selected;
 }
 
 /* =========================================================
@@ -289,8 +363,8 @@ function buildBody(
 
   body.append("judul", form.title.trim());
   body.append("ketua", form.leader.trim());
-  body.append("bidang", form.field.trim());
-  body.append("kelompok", groupOfProgram(form.program));
+  body.append("bidang", canonicalFocus(form.field) || form.field.trim());
+  body.append("kelompok", form.group);
   body.append("program", form.program);
   body.append("tahun", form.year);
   body.append("abstrak", form.abstract.trim());
@@ -319,6 +393,7 @@ export default function AdminPenelitianPage() {
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState(ALL_YEARS);
   const [programFilter, setProgramFilter] = useState(ALL_PROGRAMS);
+  const [fieldFilter, setFieldFilter] = useState(ALL_FIELDS);
   const [page, setPage] = useState(1);
 
   const [modal, setModal] = useState<ModalType>(null);
@@ -390,9 +465,14 @@ export default function AdminPenelitianPage() {
 
       const matchYear = yearFilter === ALL_YEARS || item.year === yearFilter;
 
-      return matchSearch && matchYear && matchesProgram(item, programFilter);
+      return (
+        matchSearch &&
+        matchYear &&
+        matchesProgram(item, programFilter) &&
+        matchesField(item, fieldFilter)
+      );
     });
-  }, [researches, search, yearFilter, programFilter]);
+  }, [researches, search, yearFilter, programFilter, fieldFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -410,6 +490,14 @@ export default function AdminPenelitianPage() {
     return [ALL_YEARS, ...all];
   }, [researches]);
 
+  /* filter program: kelompok + saran + program yang sudah ada di data
+     (termasuk program yang diketik bebas oleh admin) */
+  const programFilterOptions = useMemo(() => {
+    const fromData = researches.map((r) => r.program).filter(Boolean);
+    const programs = Array.from(new Set([...KNOWN_PROGRAMS, ...fromData]));
+    return [ALL_PROGRAMS, ...PROGRAM_GROUPS.map((g) => g.label), ...programs];
+  }, [researches]);
+
   /* =========================================================
      SUMMARY (ringkasan di atas tabel)
   ========================================================= */
@@ -420,6 +508,13 @@ export default function AdminPenelitianPage() {
     const eksternal = researches.filter((r) => r.group === "Eksternal").length;
     return { total, internal, eksternal };
   }, [researches]);
+
+  /* penelitian yang bidangnya kosong / tidak termasuk 8 bidang
+     tidak akan tampil di halaman publik */
+  const unmatchedCount = useMemo(
+    () => researches.filter((r) => !isFocusArea(r.field)).length,
+    [researches]
+  );
 
   /* =========================================================
      MODAL
@@ -465,6 +560,9 @@ export default function AdminPenelitianPage() {
     setSelected(research);
     setForm({
       ...research,
+      /* bidang yang cocok dirapikan ke nama resmi; yang tidak cocok
+         dibiarkan supaya admin melihat nilai lamanya lalu memilih ulang */
+      field: canonicalFocus(research.field) || research.field,
       members: [...research.members],
       keywords: [...research.keywords],
     });
@@ -489,6 +587,15 @@ export default function AdminPenelitianPage() {
 
   function updateField<K extends keyof Research>(field: K, value: Research[K]) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  /* kalau yang diketik cocok dengan salah satu saran, kelompok ikut terisi */
+  function updateProgram(value: string) {
+    setForm((current) => ({
+      ...current,
+      program: value,
+      group: groupOfProgram(value.trim()) || current.group,
+    }));
   }
 
   /* =========================================================
@@ -539,6 +646,8 @@ export default function AdminPenelitianPage() {
   const canSave =
     form.title.trim() !== "" &&
     form.leader.trim() !== "" &&
+    isFocusArea(form.field) &&
+    form.group.trim() !== "" &&
     form.program.trim() !== "" &&
     form.year.trim() !== "";
 
@@ -660,6 +769,40 @@ export default function AdminPenelitianPage() {
           </div>
         )}
 
+        {/* PERINGATAN: bidang fokus belum sesuai (tidak tampil di halaman publik) */}
+
+        {!loading && unmatchedCount > 0 && (
+          <div
+            role="status"
+            className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#F1D9A8] bg-[#FFF8E8] px-4 py-3 text-[13px] leading-5 text-[#8A5A00] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span className="flex items-start gap-2.5">
+              <AlertTriangle
+                size={17}
+                strokeWidth={1.9}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                <strong className="font-semibold">{unmatchedCount} penelitian</strong>{" "}
+                belum memiliki bidang fokus yang sesuai, sehingga tidak tampil di
+                halaman publik. Edit datanya dan pilih salah satu dari 8 bidang
+                fokus.
+              </span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFieldFilter(UNMATCHED_FIELDS);
+                setPage(1);
+              }}
+              className="self-start rounded-full border border-[#E3C27F] bg-white px-4 py-1.5 text-[12px] font-medium text-[#8A5A00] transition hover:bg-[#FFFBF1] sm:self-auto"
+            >
+              Tampilkan data ini
+            </button>
+          </div>
+        )}
+
         {/* =====================================================
             SUMMARY PILLS
         ===================================================== */}
@@ -692,7 +835,7 @@ export default function AdminPenelitianPage() {
         <div className="w-full rounded-[28px] bg-white/70 p-3 shadow-[0_8px_30px_rgba(38,53,45,0.06)] backdrop-blur sm:p-4 md:p-5">
           {/* FILTER BAR */}
 
-          <div className="mb-4 flex flex-col gap-2.5 lg:flex-row lg:items-center">
+          <div className="mb-4 flex flex-col gap-2.5 xl:flex-row xl:items-center">
             <div className="relative min-w-0 flex-1">
               <Search
                 size={16}
@@ -712,14 +855,14 @@ export default function AdminPenelitianPage() {
               />
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 lg:w-[460px]">
+            <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3 xl:w-[700px]">
               <FilterSelect
-                value={yearFilter}
+                value={fieldFilter}
                 onChange={(v) => {
-                  setYearFilter(v);
+                  setFieldFilter(v);
                   setPage(1);
                 }}
-                options={yearFilterOptions}
+                options={FIELD_FILTER_OPTIONS}
               />
               <FilterSelect
                 value={programFilter}
@@ -729,6 +872,14 @@ export default function AdminPenelitianPage() {
                 }}
                 options={programFilterOptions}
               />
+              <FilterSelect
+                value={yearFilter}
+                onChange={(v) => {
+                  setYearFilter(v);
+                  setPage(1);
+                }}
+                options={yearFilterOptions}
+              />
             </div>
           </div>
 
@@ -736,13 +887,13 @@ export default function AdminPenelitianPage() {
 
           <div className="w-full overflow-hidden rounded-[22px] bg-white">
             <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[980px] border-separate border-spacing-y-1 px-2 text-left">
+              <table className="w-full min-w-[1020px] border-separate border-spacing-y-1 px-2 text-left">
                 <thead>
                   <tr>
                     <th className={`${thClass} py-4 pl-5 pr-3`}>Judul Penelitian</th>
-                    <th className={`${thClass} w-[190px] text-center`}>Ketua Pengusul</th>
-                    <th className={`${thClass} w-[170px] text-center`}>Bidang Fokus</th>
-                    <th className={`${thClass} w-[220px] text-center`}>Program</th>
+                    <th className={`${thClass} w-[180px] text-center`}>Ketua Pengusul</th>
+                    <th className={`${thClass} w-[220px] text-center`}>Bidang Fokus</th>
+                    <th className={`${thClass} w-[210px] text-center`}>Program</th>
                     <th className={`${thClass} w-[80px] text-center`}>Tahun</th>
                     <th className={`${thClass} w-[130px] text-center`}>Aksi</th>
                   </tr>
@@ -751,6 +902,7 @@ export default function AdminPenelitianPage() {
                 <tbody>
                   {pageItems.map((research) => {
                     const cell = "bg-white group-hover:bg-[#F2F8F2]";
+                    const fieldOk = isFocusArea(research.field);
 
                     return (
                       <tr key={research.id} className="group">
@@ -768,12 +920,29 @@ export default function AdminPenelitianPage() {
                           {research.leader}
                         </td>
 
-                        <td className={`px-3 py-3.5 text-center align-middle text-[13px] text-[#5D6861] transition-colors ${cell}`}>
-                          {research.field || <span className="text-[#A0AAA4]">—</span>}
+                        <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
+                          {fieldOk ? (
+                            <span className="line-clamp-2 text-[12.5px] leading-[18px] text-[#5D6861]">
+                              {canonicalFocus(research.field)}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF4E5] px-2.5 py-1 text-[11px] font-medium text-[#B45309]">
+                                <AlertTriangle size={11} strokeWidth={2} />
+                                Perlu diperbarui
+                              </span>
+
+                              {research.field && (
+                                <p className="mt-1 line-clamp-1 text-[11px] text-[#8A948E]">
+                                  {research.field}
+                                </p>
+                              )}
+                            </>
+                          )}
                         </td>
 
                         <td className={`px-3 py-3.5 text-center align-middle transition-colors ${cell}`}>
-                          <span className="inline-flex max-w-[200px] items-center gap-1.5 rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
+                          <span className="inline-flex max-w-[190px] items-center gap-1.5 rounded-full bg-[#E3F1E4] px-3 py-1.5 text-[11px] font-medium leading-[15px] text-[#2E7D32]">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E7D32]" />
                             <span className="truncate">{research.program}</span>
                           </span>
@@ -915,54 +1084,6 @@ export default function AdminPenelitianPage() {
                   />
                 </FormField>
 
-                <FormField label="Bidang Fokus">
-                  <input
-                    value={form.field}
-                    onChange={(e) => updateField("field", e.target.value)}
-                    placeholder="Contoh: Produk Rekayasa Keteknikan"
-                    className={inputClass}
-                  />
-                </FormField>
-
-                <FormField label="Program" required>
-                  <div className="relative">
-                    <select
-                      value={form.program}
-                      onChange={(e) => updateField("program", e.target.value)}
-                      className={`${inputClass} appearance-none pr-9`}
-                    >
-                      <option value="">Pilih program</option>
-
-                      {/* program lama yang tidak ada di daftar tetap bisa tampil */}
-                      {form.program && !groupOfProgram(form.program) && (
-                        <option value={form.program}>{form.program}</option>
-                      )}
-
-                      {PROGRAM_GROUPS.map((group) => (
-                        <optgroup key={group.id} label={group.label}>
-                          {group.programs.map((program) => (
-                            <option key={program} value={program}>
-                              {program}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-
-                    <ChevronDown
-                      size={15}
-                      strokeWidth={1.8}
-                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
-                    />
-                  </div>
-
-                  {form.program && groupOfProgram(form.program) && (
-                    <p className="mt-1 text-[11px] text-[#8A948E]">
-                      Kelompok: Program {groupOfProgram(form.program)}
-                    </p>
-                  )}
-                </FormField>
-
                 <FormField label="Tahun" required>
                   <div className="relative">
                     <select
@@ -986,6 +1107,100 @@ export default function AdminPenelitianPage() {
                       className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
                     />
                   </div>
+                </FormField>
+
+                {/* BIDANG FOKUS (dropdown 8 prioritas riset) */}
+
+                <FormField
+                  label="Bidang Fokus Riset"
+                  required
+                  hint="Menentukan box tempat penelitian tampil"
+                  className="md:col-span-2"
+                >
+                  <div className="relative">
+                    <select
+                      value={form.field}
+                      onChange={(e) => updateField("field", e.target.value)}
+                      className={`${inputClass} appearance-none pr-9`}
+                    >
+                      <option value="">Pilih bidang fokus</option>
+
+                      {/* nilai lama yang tidak sesuai tetap terlihat, tapi tidak bisa disimpan */}
+                      {form.field && !isFocusArea(form.field) && (
+                        <option value={form.field} disabled>
+                          {form.field} (tidak sesuai, pilih ulang)
+                        </option>
+                      )}
+
+                      {FOCUS_AREAS.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={15}
+                      strokeWidth={1.8}
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
+                    />
+                  </div>
+
+                  {form.field && !isFocusArea(form.field) && (
+                    <p className="mt-1.5 text-[11.5px] font-medium leading-5 text-[#B45309]">
+                      Bidang lama &ldquo;{form.field}&rdquo; tidak termasuk 8
+                      bidang fokus. Pilih salah satu bidang di atas agar
+                      penelitian ini tampil di halaman publik.
+                    </p>
+                  )}
+                </FormField>
+
+                <FormField label="Kelompok Program" required>
+                  <div className="relative">
+                    <select
+                      value={form.group}
+                      onChange={(e) => updateField("group", e.target.value)}
+                      className={`${inputClass} appearance-none pr-9`}
+                    >
+                      <option value="">Pilih kelompok</option>
+                      {PROGRAM_GROUPS.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={15}
+                      strokeWidth={1.8}
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8A948E]"
+                    />
+                  </div>
+                </FormField>
+
+                <FormField
+                  label="Program"
+                  required
+                  hint="Ketik atau pilih dari saran"
+                >
+                  <input
+                    list="program-suggestions"
+                    value={form.program}
+                    onChange={(e) => updateProgram(e.target.value)}
+                    placeholder="Contoh: Penelitian Kerjasama"
+                    autoComplete="off"
+                    className={inputClass}
+                  />
+
+                  <datalist id="program-suggestions">
+                    {PROGRAM_GROUPS.filter(
+                      (group) => !form.group || group.id === form.group
+                    )
+                      .flatMap((group) => group.programs)
+                      .map((program) => (
+                        <option key={program} value={program} />
+                      ))}
+                  </datalist>
                 </FormField>
 
                 <FormField label="Ringkasan Penelitian" className="md:col-span-2">
@@ -1032,7 +1247,7 @@ export default function AdminPenelitianPage() {
                     </label>
 
                     <span className="text-[11px] text-[#9AA49F]">
-                      Semua format gambar
+                      Opsional, semua format gambar
                     </span>
                   </div>
 
@@ -1163,16 +1378,23 @@ export default function AdminPenelitianPage() {
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <DetailItem label="Ketua Pengusul" value={selected.leader} />
+                <DetailItem label="Tahun" value={selected.year} />
                 <DetailItem
-                  label="Bidang Fokus"
-                  value={selected.field || "Belum dicantumkan"}
+                  label="Bidang Fokus Riset"
+                  value={
+                    isFocusArea(selected.field)
+                      ? canonicalFocus(selected.field)
+                      : selected.field
+                        ? `${selected.field} (belum sesuai, tidak tampil di halaman publik)`
+                        : "Belum dicantumkan (tidak tampil di halaman publik)"
+                  }
+                  full
                 />
                 <DetailItem label="Program" value={selected.program} />
                 <DetailItem
                   label="Kelompok"
                   value={selected.group ? `Program ${selected.group}` : "-"}
                 />
-                <DetailItem label="Tahun" value={selected.year} />
               </div>
 
               <div className="mt-5">
@@ -1600,9 +1822,19 @@ function FormField({
    DETAIL ITEM
 ========================================================= */
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({
+  label,
+  value,
+  full = false,
+}: {
+  label: string;
+  value: string;
+  full?: boolean;
+}) {
   return (
-    <div className="rounded-2xl bg-[#F6F9F6] px-4 py-3">
+    <div
+      className={`rounded-2xl bg-[#F6F9F6] px-4 py-3 ${full ? "sm:col-span-2" : ""}`}
+    >
       <p className="text-[11px] text-[#89948D]">{label}</p>
 
       <p className="mt-1 break-words text-[13px] font-medium leading-5 text-[#3B4A41]">

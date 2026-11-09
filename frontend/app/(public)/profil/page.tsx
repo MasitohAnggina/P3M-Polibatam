@@ -61,6 +61,11 @@ const poppins = Poppins({
    isi          : 14 (leading 1.75)
    label/meta   : 10.5-13
 
+   PRINSIP ISI TEKS
+   Teks dibuat singkat supaya nyaman dibaca: satu gagasan per
+   kalimat, paragraf pendek, lebar baris dibatasi (sekitar 640px).
+   Detail lengkap tersedia di laporan yang bisa diunduh.
+
    HERO
    Gaya hero (gradasi, bobot huruf, animasi, navbar transparan)
    disamakan dengan hero Beranda. Ukurannya tetap lebih ringkas
@@ -120,17 +125,16 @@ type ApiMember = {
 ========================================================= */
 
 /* DRAFT visi dan misi, disusun dari tupoksi P3M, Renstra, dan
-   Polibatam University Berdampak. Perlu diverifikasi ke pimpinan
-   P3M sebelum rilis. */
+   Polibatam University Berdampak. Sudah diringkas supaya mudah
+   dibaca. Perlu diverifikasi ke pimpinan P3M sebelum rilis. */
 const visi =
   "Menjadi pusat penelitian dan pengabdian kepada masyarakat vokasi yang unggul, inovatif, dan berdampak nyata bagi masyarakat, industri, dan pembangunan berkelanjutan.";
 
 const misi = [
-  "Menyusun peta jalan penelitian dan pengabdian yang selaras dengan Renstra dan RIP Politeknik Negeri Batam.",
-  "Menyelenggarakan dan mengoordinasikan penelitian serta pengabdian kepada masyarakat bagi dosen dan mahasiswa.",
-  "Mengidentifikasi dan menyosialisasikan sumber pendanaan internal maupun eksternal.",
-  "Mengelola publikasi ilmiah, jurnal institusi, dan pelindungan hak kekayaan intelektual.",
-  "Memperluas kolaborasi dengan industri, pemerintah, perguruan tinggi, dan masyarakat untuk hilirisasi riset dan dampak nyata.",
+  "Menyusun peta jalan penelitian dan pengabdian yang selaras dengan Renstra Polibatam.",
+  "Mengoordinasikan penelitian dan pengabdian bagi dosen dan mahasiswa, termasuk informasi pendanaan.",
+  "Mengelola publikasi ilmiah dan pelindungan kekayaan intelektual.",
+  "Memperluas kolaborasi dengan industri, pemerintah, dan masyarakat.",
 ];
 
 const LAPORAN_DAMPAK_URL =
@@ -142,17 +146,17 @@ const dampak = [
   {
     icon: Users,
     title: "Dampak Sosial",
-    desc: "Memperluas akses pendidikan yang inklusif, meningkatkan kualitas penelitian dan inovasi untuk menjawab masalah masyarakat, serta memperkuat pengabdian melalui kolaborasi dengan mitra.",
+    desc: "Memperluas akses pendidikan dan menjawab masalah masyarakat lewat riset dan pengabdian.",
   },
   {
     icon: TrendingUp,
     title: "Dampak Ekonomi",
-    desc: "Hilirisasi hasil riset, pengembangan kewirausahaan, dan kemitraan dengan dunia usaha dan industri yang memberi nilai tambah bagi perekonomian daerah.",
+    desc: "Hilirisasi riset dan kemitraan dengan industri untuk nilai tambah ekonomi daerah.",
   },
   {
     icon: Leaf,
     title: "Dampak Lingkungan",
-    desc: "Mengintegrasikan prinsip keberlanjutan dalam pengelolaan kampus, pendidikan, penelitian, dan pengabdian untuk mendukung Tujuan Pembangunan Berkelanjutan.",
+    desc: "Menerapkan prinsip keberlanjutan di kampus, pendidikan, dan penelitian.",
   },
 ];
 
@@ -341,7 +345,7 @@ function ScrollProgress() {
 /* Judul bagian: rata kiri, huruf kapital (sesuai mockup). */
 function SectionTitle({ title }: { title: string }) {
   return (
-    <Reveal className="mb-10 md:mb-14">
+    <Reveal className="mb-8 md:mb-12">
       <h2 className="text-[24px] font-bold uppercase leading-[1.2] tracking-[-0.005em] text-[#1F2A1A] sm:text-[28px] md:text-[32px]">
         {title}
       </h2>
@@ -480,13 +484,11 @@ export default function ProfilPage() {
             </h1>
 
             <p
-              className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+              className="timbul mx-auto mt-5 max-w-[560px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
               style={delayStyle(320)}
             >
-              Pusat Penelitian dan Pengabdian kepada Masyarakat Politeknik
-              Negeri Batam yang berperan dalam mendukung kegiatan penelitian,
-              pengabdian kepada masyarakat, publikasi, dan pengembangan
-              inovasi.
+              Mendukung penelitian, pengabdian kepada masyarakat, publikasi,
+              dan inovasi di Politeknik Negeri Batam.
             </p>
           </div>
         </div>
@@ -495,38 +497,27 @@ export default function ProfilPage() {
       {/* =====================================================
           TENTANG P3M
       ===================================================== */}
-      <section id="tentang" className="scroll-mt-20 bg-white py-20 md:py-28">
+      <section id="tentang" className="scroll-mt-20 bg-white py-16 md:py-20">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <Reveal>
             <p className="text-[13px] font-semibold text-[#3F6B28]">
               Tentang Kami
             </p>
 
-            <h2 className="mt-2 max-w-[760px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
+            <h2 className="mt-2 max-w-[640px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
               Pusat Penelitian dan Pengabdian kepada Masyarakat
             </h2>
           </Reveal>
 
           <Reveal delay={100} className="mt-5">
-            <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-              Pusat Penelitian dan Pengabdian kepada Masyarakat (P3M) merupakan
-              unsur pembantu pimpinan di Politeknik Negeri Batam yang
-              bertanggung jawab langsung kepada Direktur. P3M berperan
-              mengoordinasikan pelaksanaan penelitian, pengabdian kepada
-              masyarakat, publikasi ilmiah, serta pengembangan inovasi di
-              lingkungan Politeknik Negeri Batam.
+            <p className="max-w-[640px] text-[14px] leading-[1.75] text-[#5E6B58]">
+              P3M adalah unsur pembantu pimpinan Politeknik Negeri Batam yang
+              mengoordinasikan penelitian, pengabdian kepada masyarakat,
+              publikasi ilmiah, dan inovasi.
             </p>
           </Reveal>
 
-          <Reveal delay={200} className="mt-4">
-            <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-              P3M mendorong terciptanya kegiatan penelitian dan pengabdian yang
-              berkualitas serta memberikan manfaat dan dampak nyata bagi
-              masyarakat, industri, dan pembangunan.
-            </p>
-          </Reveal>
-
-          <Reveal delay={300} className="mt-6">
+          <Reveal delay={200} className="mt-6">
             <Link
               href="/penelitian"
               className="group inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
@@ -547,7 +538,7 @@ export default function ProfilPage() {
       ===================================================== */}
       <section
         id="visi-misi"
-        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle title="Visi dan Misi" />
@@ -597,90 +588,61 @@ export default function ProfilPage() {
 
       {/* =====================================================
           POLIBATAM UNIVERSITY BERDAMPAK
+          (tanpa foto/logo, teks satu kolom)
       ===================================================== */}
       <section
         id="berdampak"
-        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle title="Polibatam University Berdampak" />
 
-          <div className="grid items-center gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
-            {/* LOGO
-                Letakkan file resmi di public/img/logo-polibatam-university.png
-                (PNG transparan, minimal 640 x 320 px). */}
+          <div className="max-w-[640px]">
             <Reveal>
-              <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-[#D9E2D3] bg-white p-8">
-                <Image
-                  src="/img/polibatam.jpg"
-                  alt="Logo Polibatam University Berdampak"
-                  width={640}
-                  height={320}
-                  quality={90}
-                  sizes="(max-width: 1024px) 80vw, 360px"
-                  className="h-auto w-full max-w-[300px] object-contain"
-                />
-              </div>
+              <p className="text-[13px] font-semibold text-[#3F6B28]">
+                Laporan Dampak 2025
+              </p>
+
+              <h3 className="mt-2 text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
+                Pendidikan vokasi yang memberi manfaat nyata
+              </h3>
             </Reveal>
 
-            <div>
-              <Reveal delay={100}>
-                <p className="text-[13px] font-semibold text-[#3F6B28]">
-                  Laporan Dampak Sosial, Ekonomi, dan Lingkungan 2025
-                </p>
+            <Reveal delay={100} className="mt-5">
+              <p className="text-[14px] leading-[1.75] text-[#5E6B58]">
+                Komitmen Politeknik Negeri Batam untuk memberi manfaat bagi
+                masyarakat, didokumentasikan dalam laporan dampak tahunan.
+              </p>
+            </Reveal>
 
-                <h3 className="mt-2 text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
-                  Pendidikan vokasi yang memberi manfaat nyata
-                </h3>
-              </Reveal>
+            <Reveal delay={180} className="mt-5">
+              <ul className="flex flex-wrap gap-2" aria-label="Landasan">
+                {landasan.map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-full border border-[#D9E2D3] bg-[#EEF4EA] px-3 py-1 text-[12px] font-medium text-[#31551F]"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
 
-              <Reveal delay={180} className="mt-5">
-                <p className="text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Polibatam University Berdampak adalah komitmen Politeknik
-                  Negeri Batam untuk menghadirkan pendidikan vokasi yang
-                  bermanfaat bagi masyarakat. Komitmen ini didokumentasikan
-                  dalam laporan dampak tahunan yang mencakup pelaksanaan Tri
-                  Dharma Perguruan Tinggi dan tata kelola kelembagaan.
-                </p>
-              </Reveal>
-
-              <Reveal delay={260} className="mt-4">
-                <p className="text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Laporan menjadi bentuk akuntabilitas kepada pemangku
-                  kepentingan sekaligus dasar pengambilan keputusan berbasis
-                  bukti.
-                </p>
-              </Reveal>
-
-              <Reveal delay={340} className="mt-5">
-                <ul className="flex flex-wrap gap-2" aria-label="Landasan">
-                  {landasan.map((item) => (
-                    <li
-                      key={item}
-                      className="rounded-full border border-[#D9E2D3] bg-[#EEF4EA] px-3 py-1 text-[12px] font-medium text-[#31551F]"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
-
-              <Reveal delay={420} className="mt-6">
-                <a
-                  href={LAPORAN_DAMPAK_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-300 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-                >
-                  <Download size={16} strokeWidth={2} aria-hidden />
-                  Unduh Laporan 2025
-                </a>
-              </Reveal>
-            </div>
+            <Reveal delay={260} className="mt-6">
+              <a
+                href={LAPORAN_DAMPAK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-300 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+              >
+                <Download size={16} strokeWidth={2} aria-hidden />
+                Unduh Laporan 2025
+              </a>
+            </Reveal>
           </div>
 
           {/* TIGA DIMENSI DAMPAK */}
-          <div className="mt-12 grid gap-5 md:mt-16 md:grid-cols-3 md:gap-6">
+          <div className="mt-12 grid gap-5 md:mt-14 md:grid-cols-3 md:gap-6">
             {dampak.map((item, index) => {
               const Icon = item.icon;
 
@@ -709,7 +671,7 @@ export default function ProfilPage() {
       {/* =====================================================
           STRUKTUR ORGANISASI
       ===================================================== */}
-      <section className="border-t border-[#D9E2D3] bg-white py-20 md:py-28">
+      <section className="border-t border-[#D9E2D3] bg-white py-16 md:py-20">
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle title="Struktur Organisasi" />
 
@@ -770,7 +732,7 @@ export default function ProfilPage() {
       ===================================================== */}
       <section
         id="kontak"
-        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle title="Kontak P3M" />

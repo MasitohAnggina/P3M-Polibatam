@@ -12,23 +12,27 @@ import {
 } from "react";
 
 import {
+  Anchor,
   ArrowLeft,
   ArrowRight,
   Building2,
   CalendarDays,
   Check,
-  ChevronDown,
-  ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Cpu,
+  Factory,
   FileText,
   Globe,
   Handshake,
+  HeartPulse,
   Layers,
-  Search,
+  ShieldCheck,
   Tag,
   Users,
   WalletCards,
+  Wheat,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +79,12 @@ const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
    isi          : 14 (leading 1.75)
    label/meta   : 11-13
 
+   PRINSIP ISI TEKS
+   Teks dibuat singkat supaya nyaman dibaca: satu gagasan per
+   kalimat, paragraf pendek, lebar baris dibatasi (sekitar 640px).
+   Rincian lengkap ada di dokumen Renstra dan Panduan yang bisa
+   dibuka dari halaman ini.
+
    ATURAN FOTO (untuk halaman ini dan form upload nanti)
    Foto bersifat opsional. Kalau admin tidak mengunggah gambar,
    area foto (thumbnail di daftar dan foto besar di detail) tidak
@@ -100,9 +110,58 @@ const RENSTRA_URL =
 const PANDUAN_URL =
   "https://polbat-my.sharepoint.com/:b:/g/personal/p3m_polibatam_ac_id/IQAI9PcvgLjgQriZuVKH8eW8AX72_cv1jt0xpUUQW5m2tKc?e=pSyo2v";
 
-const ALL_PROGRAMS = "Semua Program";
-const ALL_YEARS = "Semua Tahun";
-const PAGE_SIZE = 5;
+/* jumlah penelitian maksimal yang tampil di tiap box bidang fokus.
+   Kalau penelitiannya lebih banyak, muncul tombol "Lihat lebih banyak"
+   yang membuka halaman daftar lengkap bidang itu. */
+const FOCUS_PREVIEW = 2;
+
+/* =========================================================
+   BIDANG FOKUS RISET (8 prioritas)
+   `title` harus sama persis dengan isi kolom `bidang` pada data
+   penelitian (huruf besar/kecil dan spasi berlebih diabaikan).
+   `slug` dipakai untuk alamat halaman daftar: /penelitian#daftar-<slug>.
+   Di form admin, kolom Bidang sebaiknya berupa dropdown dengan
+   8 pilihan ini, bukan teks bebas, supaya pengelompokan akurat.
+========================================================= */
+
+type FocusArea = {
+  title: string;
+  slug: string;
+  icon: LucideIcon;
+};
+
+const focusAreas: FocusArea[] = [
+  {
+    title: "Ketahanan Pangan dan Pertanian",
+    slug: "pangan",
+    icon: Wheat,
+  },
+  {
+    title: "Transisi Energi, Material, dan Manufaktur",
+    slug: "energi",
+    icon: Zap,
+  },
+  {
+    title: "Kesehatan dan Kemandirian Obat Nasional",
+    slug: "kesehatan",
+    icon: HeartPulse,
+  },
+  {
+    title: "Rekayasa dan Teknologi Digital (AI, IoT, Semikonduktor)",
+    slug: "digital",
+    icon: Cpu,
+  },
+  { title: "Pertahanan dan Keamanan", slug: "pertahanan", icon: ShieldCheck },
+  { title: "Kemaritiman", slug: "kemaritiman", icon: Anchor },
+  { title: "Industri dan Hilirisasi", slug: "industri", icon: Factory },
+  {
+    title: "Kemandirian Sosial dan Budaya",
+    slug: "sosial",
+    icon: Users,
+  },
+];
+
+const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
 
 type ProgramItem = {
   title: string;
@@ -131,19 +190,18 @@ const programGroups: ProgramGroup[] = [
     id: "Internal",
     title: "Program Internal",
     description:
-      "Penelitian yang bersumber dari Politeknik Negeri Batam, melalui penugasan dan aktivitas PBL. Proposal diusulkan melalui SIMP3M.",
+      "Penelitian dari Politeknik Negeri Batam. Proposal diajukan lewat SIMP3M.",
     icon: Building2,
     items: [
       {
         title: "Penelitian Penugasan Polibatam",
-        description:
-          "Hibah penelitian penugasan Politeknik Negeri Batam, diatur lebih lanjut sesuai kebutuhan.",
+        description: "Hibah penelitian penugasan Politeknik Negeri Batam.",
         icon: FileText,
       },
       {
         title: "Penelitian PBL",
         description:
-          "Penelitian melalui aktivitas Project, Product, atau Problem Based Learning. Pelaksanaannya diatur terpisah dengan tetap berpedoman pada alur pengajuan umum.",
+          "Penelitian melalui kegiatan Project, Product, atau Problem Based Learning.",
         icon: Layers,
       },
     ],
@@ -152,19 +210,17 @@ const programGroups: ProgramGroup[] = [
     id: "Eksternal",
     title: "Program Eksternal",
     description:
-      "Hibah dari kementerian, lembaga, pemerintah daerah, dan mitra di luar Politeknik Negeri Batam, yang diajukan melalui program penguatan penelitian.",
+      "Hibah dari kementerian, lembaga, pemerintah daerah, dan mitra.",
     icon: Globe,
     items: [
       {
         title: "Penelitian BIMA",
-        description:
-          "Hibah nasional Kemdiktisaintek melalui aplikasi Basis Informasi Penelitian dan PkM (BIMA).",
+        description: "Hibah nasional Kemdiktisaintek lewat aplikasi BIMA.",
         icon: ClipboardList,
       },
       {
         title: "Penelitian BRIN",
-        description:
-          "Program riset dan inovasi Badan Riset dan Inovasi Nasional (BRIN).",
+        description: "Program riset dan inovasi BRIN.",
         icon: Layers,
       },
       {
@@ -174,8 +230,7 @@ const programGroups: ProgramGroup[] = [
       },
       {
         title: "Penelitian BPDPKS",
-        description:
-          "Hibah riset sawit dari Badan Pengelola Dana Perkebunan Kelapa Sawit (BPDPKS).",
+        description: "Hibah riset sawit dari BPDPKS.",
         icon: WalletCards,
       },
       {
@@ -190,14 +245,12 @@ const programGroups: ProgramGroup[] = [
       },
       {
         title: "Penelitian CSR",
-        description:
-          "Penelitian dalam bentuk Corporate Social Responsibility (CSR) bersama mitra.",
+        description: "Penelitian CSR bersama mitra.",
         icon: Handshake,
       },
       {
         title: "Penelitian Hibah Lainnya",
-        description:
-          "Hibah dari sumber lain yang sah di dalam maupun luar negeri.",
+        description: "Hibah dari sumber lain yang sah.",
         icon: Globe,
       },
     ],
@@ -205,40 +258,40 @@ const programGroups: ProgramGroup[] = [
 ];
 
 /* Tahapan mengacu pada Buku Panduan Penelitian dan PkM 2026
-   (Gambar 1 dan bagian 7). Persyaratan program eksternal mengikuti
-   panduan pemberi dana. */
+   (Gambar 1 dan bagian 7). Deskripsi dibuat singkat; rincian
+   lengkap ada di buku panduan. */
 const researchStages = [
   {
     title: "Pengumuman",
-    desc: "Jadwal setiap tahapan disampaikan melalui email atau website P3M.",
+    desc: "Jadwal diumumkan lewat email atau website P3M.",
   },
   {
     title: "Pengusulan",
-    desc: "Proposal diunggah melalui SIMP3M, judul didaftarkan di platform PBL, dan disetujui ketua PK atau CoE.",
+    desc: "Unggah proposal di SIMP3M dan daftarkan judul di platform PBL.",
   },
   {
-    title: "Penyeleksian atau penunjukan",
-    desc: "Reviu administratif, reviu substantif, dan seleksi atau uji kelayakan oleh reviewer internal dan eksternal.",
+    title: "Seleksi",
+    desc: "Proposal direviu dan diseleksi oleh reviewer.",
   },
   {
     title: "Penetapan",
-    desc: "Judul yang didanai ditetapkan berdasarkan hasil seleksi dan ketersediaan dana, lalu proposal diperbaiki dan SP3 ditandatangani.",
+    desc: "Judul yang didanai ditetapkan dan SP3 ditandatangani.",
   },
   {
     title: "Pelaksanaan",
-    desc: "Diawali kontrak perjanjian. Dana tahap I sebesar 70% dicairkan sesuai SP3.",
+    desc: "Kontrak ditandatangani, dana tahap I (70%) dicairkan.",
   },
   {
     title: "Pemantauan dan evaluasi",
-    desc: "Monitoring oleh reviewer, dan seminar reviu hasil diadakan saat penelitian mencapai 70% waktu pelaksanaan.",
+    desc: "Reviewer memantau dan seminar reviu hasil digelar.",
   },
   {
     title: "Pelaporan",
-    desc: "Laporan kemajuan dan laporan akhir, paling lambat dua pekan setelah monitoring, disertai presentasi. Dana tahap II sebesar 30% dicairkan sesuai SP3.",
+    desc: "Kirim laporan kemajuan dan laporan akhir. Dana tahap II (30%) dicairkan.",
   },
   {
-    title: "Penilaian luaran dan analisis dampak",
-    desc: "Penilaian dan validasi luaran penelitian, serta analisis dampak kegiatan.",
+    title: "Penilaian luaran",
+    desc: "Luaran dinilai dan dampak penelitian dianalisis.",
   },
 ];
 
@@ -295,9 +348,10 @@ function groupOfProgram(program: string): Research["group"] {
 }
 
 function fromApi(item: ApiResearch): Research {
-  const group = item.kelompok === "Internal" || item.kelompok === "Eksternal"
-    ? item.kelompok
-    : groupOfProgram(item.program);
+  const group =
+    item.kelompok === "Internal" || item.kelompok === "Eksternal"
+      ? item.kelompok
+      : groupOfProgram(item.program);
 
   return {
     id: String(item.id),
@@ -314,39 +368,13 @@ function fromApi(item: ApiResearch): Research {
   };
 }
 
-/* Pilihan filter: semua, induk program, lalu tiap anak */
-const programOptions = [
-  ALL_PROGRAMS,
-  ...programGroups.map((group) => group.title),
-  ...programGroups.flatMap((group) => group.items.map((item) => item.title)),
-];
-
-function matchesProgram(research: Research, selected: string) {
-  if (selected === ALL_PROGRAMS) return true;
-
-  const group = programGroups.find((item) => item.title === selected);
-  if (group) return research.group === group.id;
-
-  return research.program === selected;
+function matchesFocus(research: Research, selected: string) {
+  return normalize(research.field) === normalize(selected);
 }
 
-function getPageItems(total: number, current: number): (number | "gap")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
-  const pages = Array.from(
-    new Set([1, total, current - 1, current, current + 1])
-  )
-    .filter((n) => n >= 1 && n <= total)
-    .sort((a, b) => a - b);
-
-  const items: (number | "gap")[] = [];
-
-  pages.forEach((n, index) => {
-    if (index > 0 && n - pages[index - 1] > 1) items.push("gap");
-    items.push(n);
-  });
-
-  return items;
+/* terbaru dulu: tahun besar ke kecil, lalu id besar ke kecil */
+function byNewest(a: Research, b: Research) {
+  return Number(b.year) - Number(a.year) || Number(b.id) - Number(a.id);
 }
 
 /* =========================================================
@@ -380,7 +408,6 @@ function useInView<T extends HTMLElement>(
 
   return { ref, inView };
 }
-
 
 function usePrefersReducedMotion() {
   const [reduce, setReduce] = useState(false);
@@ -512,19 +539,19 @@ function SectionTitle({
   description?: string;
 }) {
   return (
-    <Reveal className="mb-9 md:mb-12">
+    <Reveal className="mb-8 md:mb-10">
       {eyebrow && (
         <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
           {eyebrow}
         </p>
       )}
 
-      <h2 className="max-w-[720px] text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2A1A] sm:text-[30px] md:text-[34px]">
+      <h2 className="max-w-[640px] text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2A1A] sm:text-[30px] md:text-[34px]">
         {title}
       </h2>
 
       {description && (
-        <p className="mt-3 max-w-[620px] text-[14px] leading-[1.75] text-[#5E6B58]">
+        <p className="mt-3 max-w-[560px] text-[14px] leading-[1.75] text-[#5E6B58]">
           {description}
         </p>
       )}
@@ -541,6 +568,7 @@ function SectionTitle({
 ========================================================= */
 
 const DETAIL_HASH = "#detail-";
+const FOCUS_HASH = "#daftar-";
 
 /* Lompat langsung tanpa animasi. Karena html memakai
    scroll-behavior: smooth, tanpa ini halaman "meluncur" panjang
@@ -556,10 +584,10 @@ function jumpTo(target: HTMLElement | null) {
 }
 
 export default function PenelitianPage() {
-  const [search, setSearch] = useState("");
-  const [program, setProgram] = useState(ALL_PROGRAMS);
-  const [year, setYear] = useState(ALL_YEARS);
-  const [page, setPage] = useState(1);
+  /* halaman daftar lengkap satu bidang fokus (slug), dari hash URL */
+  const [selectedFocusSlug, setSelectedFocusSlug] = useState<string | null>(
+    null
+  );
   const [activeGroupId, setActiveGroupId] = useState<ProgramGroup["id"] | null>(
     null
   );
@@ -567,7 +595,9 @@ export default function PenelitianPage() {
   const prevSelected = useRef<string | null>(null);
 
   const reduceMotion = usePrefersReducedMotion();
-  const heroRef = useHeroScroll<HTMLElement>(reduceMotion || selectedId !== null);
+  const heroRef = useHeroScroll<HTMLElement>(
+    reduceMotion || selectedId !== null || selectedFocusSlug !== null
+  );
 
   /* data penelitian dari API */
   const [researches, setResearches] = useState<Research[]>([]);
@@ -615,6 +645,11 @@ export default function PenelitianPage() {
           ? decodeURIComponent(hash.slice(DETAIL_HASH.length))
           : null
       );
+      setSelectedFocusSlug(
+        hash.startsWith(FOCUS_HASH)
+          ? decodeURIComponent(hash.slice(FOCUS_HASH.length))
+          : null
+      );
     };
 
     readHash();
@@ -622,23 +657,24 @@ export default function PenelitianPage() {
     return () => window.removeEventListener("hashchange", readHash);
   }, []);
 
-  /* atur posisi scroll saat pindah daftar <-> detail */
+  /* atur posisi scroll saat pindah daftar <-> detail <-> daftar bidang */
+  const viewKey = selectedId
+    ? `detail:${selectedId}`
+    : selectedFocusSlug
+      ? `daftar:${selectedFocusSlug}`
+      : null;
+
   useEffect(() => {
-    if (selectedId) {
+    if (viewKey) {
       jumpTo(null);
     } else if (prevSelected.current) {
-      jumpTo(document.getElementById("daftar-penelitian"));
+      jumpTo(document.getElementById("bidang-fokus"));
     }
-    prevSelected.current = selectedId;
-  }, [selectedId]);
-
-  /* kembali ke halaman 1 saat filter berubah */
-  useEffect(() => {
-    setPage(1);
-  }, [search, program, year]);
+    prevSelected.current = viewKey;
+  }, [viewKey]);
 
   const closeDetail = () => {
-    window.location.hash = "daftar-penelitian";
+    window.location.hash = "bidang-fokus";
   };
 
   /* buka sub program dari kartu induk, dan kembali ke kartu induk */
@@ -655,69 +691,32 @@ export default function PenelitianPage() {
     document.getElementById("program")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  /* pilih program dari kartu program, lalu geser ke daftar */
-  const showProgram = (title: string) => {
-    setProgram(title);
-    setYear(ALL_YEARS);
-    setSearch("");
-    document
-      .getElementById("daftar-penelitian")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const goToPage = (next: number) => {
-    setPage(next);
-    document
-      .getElementById("daftar-penelitian")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const selectedResearch = researches.find(
     (research) => research.id === selectedId
   );
 
-  const filteredResearches = useMemo(() => {
-    const keyword = search.toLowerCase();
+  /* penelitian per bidang fokus, terbaru dulu */
+  const focusGroups = useMemo(
+    () =>
+      focusAreas.map((area) => {
+        const items = researches
+          .filter((research) => matchesFocus(research, area.title))
+          .sort(byNewest);
 
-    return researches.filter((research) => {
-      const matchSearch =
-        research.title.toLowerCase().includes(keyword) ||
-        research.leader.toLowerCase().includes(keyword) ||
-        research.field.toLowerCase().includes(keyword);
-
-      const matchYear = year === ALL_YEARS || research.year === year;
-
-      return matchSearch && matchesProgram(research, program) && matchYear;
-    });
-  }, [researches, search, program, year]);
-
-  /* pilihan tahun diambil dari data yang ada */
-  const yearOptions = useMemo(
-    () => [
-      ALL_YEARS,
-      ...Array.from(new Set(researches.map((research) => research.year))).sort(
-        (a, b) => Number(b) - Number(a)
-      ),
-    ],
+        return { ...area, items };
+      }),
     [researches]
   );
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredResearches.length / PAGE_SIZE)
-  );
-  const currentPage = Math.min(page, totalPages);
-  const visibleResearches = filteredResearches.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  const selectedFocus =
+    focusGroups.find((area) => area.slug === selectedFocusSlug) ?? null;
 
   return (
     <main
-  className={`${poppins.className} ${
-    selectedResearch ? "" : "-mt-[72px]"
-  } overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
->
+      className={`${poppins.className} ${
+        selectedResearch || selectedFocus ? "" : "-mt-[72px]"
+      } overflow-x-hidden bg-white text-[#1F2A1A] antialiased`}
+    >
       <ScrollProgress />
 
       {selectedResearch ? (
@@ -727,6 +726,14 @@ export default function PenelitianPage() {
           researches={researches}
           onBack={closeDetail}
         />
+      ) : selectedFocus ? (
+        <FocusListing
+          key={selectedFocus.slug}
+          area={selectedFocus}
+          loading={loading}
+          loadError={loadError}
+          onBack={closeDetail}
+        />
       ) : (
         <>
           {/* =====================================================
@@ -734,32 +741,32 @@ export default function PenelitianPage() {
           ===================================================== */}
 
           <section
-  ref={heroRef}
-  className="hero-bg relative overflow-hidden pt-[72px] text-white"
-  style={{ backgroundImage: HERO_GRADIENT }}
->
-  <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
-    <div className="mx-auto max-w-[720px]">
-      <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
-        {"Penelitian".split(" ").map((word, index) => (
-          <span key={`${word}-${index}`}>
-            <span className="kata" style={delayStyle(120 + index * 80)}>
-              {word}
-            </span>{" "}
-          </span>
-        ))}
-      </h1>
+            ref={heroRef}
+            className="hero-bg relative overflow-hidden pt-[72px] text-white"
+            style={{ backgroundImage: HERO_GRADIENT }}
+          >
+            <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+              <div className="mx-auto max-w-[720px]">
+                <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
+                  {"Penelitian".split(" ").map((word, index) => (
+                    <span key={`${word}-${index}`}>
+                      <span className="kata" style={delayStyle(120 + index * 80)}>
+                        {word}
+                      </span>{" "}
+                    </span>
+                  ))}
+                </h1>
 
-      <p
-        className="timbul mx-auto mt-5 max-w-[850px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
-        style={delayStyle(320)}
-      >
-        Informasi program, pendanaan, tahapan, dan kegiatan penelitian
-        Politeknik Negeri Batam.
-      </p>
-    </div>
-  </div>
-</section>
+                <p
+                  className="timbul mx-auto mt-5 max-w-[560px] text-[14px] font-normal leading-[1.8] text-white/90 [text-shadow:0_1px_12px_rgba(12,32,6,0.35)] sm:text-[15px]"
+                  style={delayStyle(320)}
+                >
+                  Program, tahapan, dan kegiatan penelitian Politeknik Negeri
+                  Batam.
+                </p>
+              </div>
+            </div>
+          </section>
 
           {/* =====================================================
               RENSTRA (gaya sama dengan "Tentang Kami" di Profil)
@@ -767,7 +774,7 @@ export default function PenelitianPage() {
 
           <section
             id="renstra"
-            className="scroll-mt-20 bg-white py-20 md:py-28"
+            className="scroll-mt-20 bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <Reveal>
@@ -775,26 +782,16 @@ export default function PenelitianPage() {
                   Arah Penelitian
                 </p>
 
-                <h2 className="mt-2 max-w-[760px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
+                <h2 className="mt-2 max-w-[640px] text-[21px] font-bold leading-[1.3] tracking-[-0.02em] text-[#31551F] sm:text-[24px] md:text-[28px]">
                   Penelitian yang terarah dan berkelanjutan
                 </h2>
               </Reveal>
 
               <Reveal delay={100} className="mt-5">
-                <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Rencana Strategis Penelitian merupakan arahan kebijakan dan
-                  pengambilan keputusan dalam pengelolaan penelitian institusi
-                  untuk jangka waktu tertentu, dan menjadi acuan pengembangan
-                  kegiatan penelitian di Politeknik Negeri Batam.
-                </p>
-              </Reveal>
-
-              <Reveal delay={200} className="mt-4">
-                <p className="max-w-[860px] text-[14px] leading-[1.75] text-[#5E6B58]">
-                  Strategi yang dipilih adalah program strategis riset yang
-                  dilandaskan pada kepakaran periset Politeknik Negeri Batam
-                  dan khas pendidikan vokasi, sehingga hasil riset dapat
-                  diabdikan bagi kesejahteraan masyarakat.
+                <p className="max-w-[640px] text-[14px] leading-[1.75] text-[#5E6B58]">
+                  Rencana Strategis Penelitian menjadi acuan pengembangan
+                  penelitian di Politeknik Negeri Batam, berdasarkan kepakaran
+                  periset dan kekhasan pendidikan vokasi.
                 </p>
               </Reveal>
 
@@ -827,7 +824,7 @@ export default function PenelitianPage() {
 
           <section
             id="program"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <div key={activeGroup?.id ?? "induk"}>
@@ -869,62 +866,27 @@ export default function PenelitianPage() {
                             delay={index * 90}
                             className="flex"
                           >
-                            <button
-                              type="button"
-                              onClick={() => showProgram(item.title)}
-                              className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-8"
-                            >
-                              {/* sapuan warna saat hover */}
-                              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
-
-                              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F] transition-all duration-500 group-hover:bg-[#31551F] group-hover:text-white">
+                            <article className="flex w-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-6 md:p-7">
+                              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F]">
                                 <ItemIcon size={22} strokeWidth={1.7} aria-hidden />
                               </span>
 
-                              <span className="mt-5 block text-[16px] font-semibold leading-snug tracking-[-0.01em] text-[#1F2A1A]">
+                              <h3 className="mt-5 text-[16px] font-semibold leading-snug tracking-[-0.01em] text-[#1F2A1A]">
                                 {item.title}
-                              </span>
+                              </h3>
 
-                              <span className="mt-2 block text-[13.5px] leading-[1.75] text-[#5E6B58]">
+                              <p className="mt-2 text-[13.5px] leading-[1.75] text-[#5E6B58]">
                                 {item.description}
-                              </span>
+                              </p>
 
-                              <span className="mt-auto flex items-center justify-between gap-3 pt-6">
-                                <span className="text-[12px] font-medium text-[#5E6B58]">
-                                  {total} penelitian
-                                </span>
-
-                                <span className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#31551F]">
-                                  Lihat penelitian
-                                  <ChevronRight
-                                    size={15}
-                                    strokeWidth={2.2}
-                                    aria-hidden
-                                    className="transition-transform duration-300 group-hover:translate-x-1"
-                                  />
-                                </span>
-                              </span>
-                            </button>
+                              <p className="mt-auto pt-5 text-[12px] font-medium text-[#5E6B58]">
+                                {total} penelitian
+                              </p>
+                            </article>
                           </Reveal>
                         );
                       })}
                     </div>
-
-                    <Reveal delay={200} className="mt-6">
-                      <button
-                        type="button"
-                        onClick={() => showProgram(activeGroup.title)}
-                        className="group inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#31551F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-                      >
-                        Lihat semua penelitian {activeGroup.title.toLowerCase()}
-                        <ChevronRight
-                          size={15}
-                          strokeWidth={2.2}
-                          aria-hidden
-                          className="transition-transform duration-300 group-hover:translate-x-1"
-                        />
-                      </button>
-                    </Reveal>
                   </>
                 ) : (
                   <>
@@ -932,7 +894,7 @@ export default function PenelitianPage() {
                     <SectionTitle
                       eyebrow="Program Penelitian"
                       title="Temukan skema penelitian yang sesuai"
-                      description="Pilih kelompok program, lalu pilih sub program untuk melihat daftar penelitiannya."
+                      description="Pilih kelompok program untuk melihat sub programnya."
                     />
 
                     <div className="grid gap-6 md:grid-cols-2">
@@ -948,7 +910,7 @@ export default function PenelitianPage() {
                             <button
                               type="button"
                               onClick={() => openGroup(group.id)}
-                              className="group relative flex min-h-[260px] w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-8 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-10"
+                              className="group relative flex min-h-[240px] w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-8 text-left transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-10"
                             >
                               {/* sapuan warna saat hover */}
                               <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
@@ -961,7 +923,7 @@ export default function PenelitianPage() {
                                 {group.title}
                               </span>
 
-                              <span className="mt-2.5 block max-w-[440px] text-[14px] leading-[1.75] text-[#5E6B58]">
+                              <span className="mt-2.5 block max-w-[380px] text-[14px] leading-[1.75] text-[#5E6B58]">
                                 {group.description}
                               </span>
 
@@ -997,13 +959,13 @@ export default function PenelitianPage() {
 
           <section
             id="tahapan"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <SectionTitle
                 eyebrow="Alur Penelitian"
                 title="Bagaimana proses penelitian?"
-                description="Tahapan pengelolaan penelitian melalui SIMP3M, mulai dari pengumuman hingga penilaian luaran dan analisis dampak. Persyaratan pengusul program eksternal mengikuti panduan pemberi dana."
+                description="Delapan tahap, dari pengumuman sampai penilaian luaran."
               />
 
               <div className="relative">
@@ -1032,7 +994,7 @@ export default function PenelitianPage() {
                               {stage.title}
                             </p>
 
-                            <p className="mt-0.5 text-[12.5px] leading-[1.6] text-[#5E6B58]">
+                            <p className="mt-0.5 max-w-[560px] text-[12.5px] leading-[1.6] text-[#5E6B58]">
                               {stage.desc}
                             </p>
                           </div>
@@ -1048,7 +1010,7 @@ export default function PenelitianPage() {
                   href={SIMP3M_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md bg-[#31551F] px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-300 hover:bg-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                  className="group inline-flex items-center gap-2.5 rounded-lg bg-[#31551F] px-5 py-3 text-[13px] font-semibold leading-none text-white shadow-[0_4px_14px_rgba(49,85,31,0.18)] transition-all duration-300 hover:bg-[#3F6B28] hover:shadow-[0_8px_22px_rgba(49,85,31,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                 >
                   Ajukan proposal melalui SIMP3M
                   <ArrowRight
@@ -1063,7 +1025,7 @@ export default function PenelitianPage() {
                   href={PBL_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md border border-[#31551F] bg-white px-5 py-2.5 text-[13px] font-semibold text-[#31551F] transition-all duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                  className="group inline-flex items-center gap-2.5 rounded-lg border border-[#31551F] bg-white px-5 py-3 text-[13px] font-semibold leading-none text-[#31551F] transition-all duration-300 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
                 >
                   Daftarkan judul di SIAP PBL
                   <ArrowRight
@@ -1078,215 +1040,115 @@ export default function PenelitianPage() {
           </section>
 
           {/* =====================================================
-              DAFTAR PENELITIAN
+              BIDANG FOKUS RISET (paling bawah)
+              8 box dalam 2 kolom (4 baris), semuanya selalu tampil.
+              Tiap box menampilkan 2 penelitian dulu sebagai baris
+              polos (tanpa card), lalu tombol "Lihat lebih banyak"
+              membuka halaman daftar lengkap bidang itu.
           ===================================================== */}
 
           <section
-            id="daftar-penelitian"
-            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+            id="bidang-fokus"
+            className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-16 md:py-20"
           >
             <div className="mx-auto max-w-[1120px] px-5 md:px-7">
               <SectionTitle
-                eyebrow="Data Penelitian"
-                title="Eksplorasi kegiatan penelitian"
-                description="Temukan kegiatan penelitian yang dilaksanakan di lingkungan Politeknik Negeri Batam."
+                eyebrow="Prioritas Riset"
+                title="Bidang fokus riset"
+                description="Temukan penelitian berdasarkan delapan bidang prioritas."
               />
 
-              {/* FILTER */}
-              <Reveal>
-                <div className="rounded-2xl border border-[#D9E2D3] bg-white p-3 shadow-[0_8px_30px_rgba(31,42,26,0.05)]">
-                  <div className="grid gap-2 md:grid-cols-[1fr_260px_160px]">
-                    {/* SEARCH */}
-                    <div className="relative">
-                      <Search
-                        size={16}
-                        aria-hidden
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5E6B58]"
-                      />
+              {/* 8 BOX, 2 KOLOM. Box sebaris otomatis sama tinggi. Tiap box
+                  maksimal 2 penelitian; kalau lebih, tombol membuka
+                  halaman daftar lengkap bidang itu. */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {focusGroups.map((area) => {
+                  const AreaIcon = area.icon;
+                  const total = area.items.length;
+                  const visible = area.items.slice(0, FOCUS_PREVIEW);
+                  const remaining = total - visible.length;
 
-                      <input
-                        type="text"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Cari penelitian atau nama peneliti..."
-                        aria-label="Cari penelitian atau nama peneliti"
-                        className="h-11 w-full rounded-xl border border-transparent bg-[#F6F9F3] pl-10 pr-3 text-[13.5px] text-[#1F2A1A] outline-none transition-all placeholder:text-[#8A9684] focus:border-[#31551F] focus:bg-white"
-                      />
-                    </div>
-
-                    {/* PROGRAM */}
-                    <SelectField
-                      label="Program"
-                      value={program}
-                      onChange={setProgram}
-                      options={programOptions}
-                    />
-
-                    {/* TAHUN */}
-                    <SelectField
-                      label="Tahun"
-                      value={year}
-                      onChange={setYear}
-                      options={yearOptions}
-                    />
-                  </div>
-                </div>
-              </Reveal>
-
-              {/* HASIL (model list, klik kartu membuka detail) */}
-              <div className="mt-6 space-y-3">
-                {visibleResearches.map((research, index) => (
-                  <Reveal key={research.id} delay={index * 90}>
-                    <a
-                      href={`${DETAIL_HASH}${encodeURIComponent(research.id)}`}
-                      aria-label={`Lihat detail: ${research.title}`}
-                      className="group block w-full rounded-2xl border border-[#D9E2D3] bg-white p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_14px_32px_rgba(49,85,31,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F] md:p-5"
-                    >
-                      <span className="flex items-center gap-4 md:gap-5">
-                        {/* THUMBNAIL (hanya tampil kalau ada gambar) */}
-                        {research.image && (
-                          <span className="relative h-[64px] w-[88px] shrink-0 overflow-hidden rounded-xl bg-[#EEF4EA] sm:h-[76px] sm:w-[108px]">
-                            <Image
-                              src={research.image}
-                              unoptimized
-                              alt={research.title}
-                              fill
-                              quality={90}
-                              sizes="(max-width: 640px) 88px, 108px"
-                              className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          </span>
-                        )}
-
-                        {/* ISI */}
-                        <span className="block min-w-0 flex-1">
-                          <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                            <span className="rounded-md bg-[#31551F] px-2 py-0.5 text-[11px] font-semibold text-white">
-                              {research.group}
-                            </span>
-
-                            <span className="rounded-md bg-[#EEF4EA] px-2 py-0.5 text-[11px] font-semibold text-[#3F6B28]">
-                              {research.program}
-                            </span>
-
-                            <span className="text-[11.5px] font-medium text-[#5E6B58]">
-                              {research.year}
-                            </span>
-                          </span>
-
-                          <span className="line-clamp-2 block text-[14px] font-semibold leading-[1.55] tracking-[-0.005em] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[15px]">
-                            {research.title}
-                          </span>
-
-                          <span className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                            <span className="text-[12.5px] text-[#5E6B58]">
-                              <span className="font-medium text-[#2F3B2A]">
-                                Ketua Pengusul:
-                              </span>{" "}
-                              {research.leader}
-                            </span>
-
-                            {research.field && (<span className="text-[12.5px] text-[#5E6B58]">
-                              <span className="font-medium text-[#2F3B2A]">
-                                Bidang:
-                              </span>{" "}
-                              {research.field}
-                            </span>)}
-                          </span>
-                        </span>
-
-                        {/* DETAIL (di HP hanya panah) */}
-                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-[#31551F] sm:px-2">
-                          <span className="hidden sm:inline">Lihat Detail</span>
-                          <ChevronRight
-                            size={17}
-                            strokeWidth={2.2}
+                  return (
+                    <Reveal key={area.title} className="h-full">
+                      <article className="flex h-full flex-col rounded-2xl border border-[#D9E2D3] bg-white p-7 md:p-9">
+                        {/* KEPALA BOX */}
+                        <header className="flex items-center gap-5">
+                          <AreaIcon
+                            size={32}
+                            strokeWidth={1.5}
                             aria-hidden
-                            className="transition-transform duration-300 group-hover:translate-x-1"
+                            className="shrink-0 text-[#31551F]"
                           />
-                        </span>
-                      </span>
-                    </a>
-                  </Reveal>
-                ))}
+
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-[17px] font-semibold leading-[1.35] tracking-[-0.01em] text-[#1F2A1A] md:text-[18px]">
+                              {area.title}
+                            </h3>
+
+                            <p className="mt-1.5 text-[12.5px] font-medium text-[#3F6B28]">
+                              {total} penelitian
+                            </p>
+                          </div>
+                        </header>
+
+                        {/* DAFTAR PENELITIAN (baris polos, tanpa card) */}
+                        <div className="mt-6 border-t border-[#D9E2D3]">
+                          {visible.length > 0 ? (
+                            <ul className="divide-y divide-[#D9E2D3]">
+                              {visible.map((research) => (
+                                <li key={research.id}>
+                                  <ResearchRow research={research} />
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="pt-6 text-[13px] leading-[1.6] text-[#5E6B58]">
+                              {loading
+                                ? "Memuat data penelitian..."
+                                : loadError ||
+                                  "Belum ada penelitian pada bidang ini."}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* TOMBOL (hanya kalau penelitiannya lebih dari 2),
+                            selalu menempel di bagian bawah box */}
+                        {remaining > 0 && (
+                          <div className="mt-auto pt-6">
+                            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-[#D9E2D3] pt-5">
+                              <p className="text-[12.5px] leading-none text-[#5E6B58]">
+                                Menampilkan{" "}
+                                <span className="font-semibold text-[#2F3B2A]">
+                                  {visible.length}
+                                </span>{" "}
+                                dari{" "}
+                                <span className="font-semibold text-[#2F3B2A]">
+                                  {total}
+                                </span>{" "}
+                                penelitian
+                              </p>
+
+                              <a
+                                href={`${FOCUS_HASH}${area.slug}`}
+                                className="group inline-flex items-center gap-2 rounded-lg bg-[#31551F] py-2.5 pl-4 pr-3.5 text-[13px] font-semibold leading-none text-white shadow-[0_4px_14px_rgba(49,85,31,0.18)] transition-all duration-300 hover:bg-[#3F6B28] hover:shadow-[0_8px_22px_rgba(49,85,31,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+                              >
+                                Lihat lebih banyak
+                                <ArrowRight
+                                  size={15}
+                                  strokeWidth={2.2}
+                                  aria-hidden
+                                  className="transition-transform duration-300 group-hover:translate-x-1"
+                                />
+                                <span className="sr-only"> {area.title}</span>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    </Reveal>
+                  );
+                })}
               </div>
-
-              {/* KOSONG */}
-              {filteredResearches.length === 0 && (
-                <div className="mt-6 rounded-2xl border border-dashed border-[#B9CBB0] bg-white px-5 py-14 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EEF4EA] text-[#31551F]">
-                    <Search size={20} aria-hidden />
-                  </div>
-
-                  <p className="mt-4 text-[14.5px] font-semibold text-[#1F2A1A]">
-                    {loading
-                      ? "Memuat data penelitian..."
-                      : loadError
-                        ? loadError
-                        : researches.length === 0
-                          ? "Belum ada data penelitian."
-                          : "Penelitian tidak ditemukan."}
-                  </p>
-
-                  <p className="mt-1 text-[13.5px] text-[#5E6B58]">
-                    {researches.length > 0 && "Coba gunakan kata kunci atau filter yang berbeda."}
-                  </p>
-                </div>
-              )}
-
-              {/* PAGINATION (tampil kalau lebih dari satu halaman) */}
-              {totalPages > 1 && (
-                <nav
-                  aria-label="Halaman daftar penelitian"
-                  className="mt-8 flex items-center justify-center gap-1.5"
-                >
-                  <button
-                    type="button"
-                    aria-label="Halaman sebelumnya"
-                    disabled={currentPage === 1}
-                    onClick={() => goToPage(currentPage - 1)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <ChevronLeft size={16} aria-hidden />
-                  </button>
-
-                  {getPageItems(totalPages, currentPage).map((item, index) =>
-                    item === "gap" ? (
-                      <span
-                        key={`gap-${index}`}
-                        className="px-1 text-[13px] text-[#A3AE9E]"
-                      >
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={item}
-                        type="button"
-                        aria-label={`Halaman ${item}`}
-                        aria-current={item === currentPage ? "page" : undefined}
-                        onClick={() => goToPage(item)}
-                        className={`h-9 w-9 rounded-lg text-[12.5px] font-semibold transition-all duration-300 ${
-                          item === currentPage
-                            ? "bg-[#31551F] text-white"
-                            : "border border-[#D9E2D3] bg-white text-[#4A5646] hover:border-[#31551F] hover:text-[#31551F]"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    type="button"
-                    aria-label="Halaman berikutnya"
-                    disabled={currentPage === totalPages}
-                    onClick={() => goToPage(currentPage + 1)}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E2D3] bg-white text-[#5E6B58] transition-all duration-300 hover:border-[#31551F] hover:bg-[#31551F] hover:text-white disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    <ChevronRight size={16} aria-hidden />
-                  </button>
-                </nav>
-              )}
             </div>
           </section>
         </>
@@ -1335,6 +1197,167 @@ export default function PenelitianPage() {
   }
 `}</style>
     </main>
+  );
+}
+
+/* =========================================================
+   BARIS PENELITIAN (dipakai di box bidang fokus dan halaman daftar)
+   Baris polos tanpa card. Thumbnail hanya tampil kalau ada gambar.
+========================================================= */
+
+function ResearchRow({
+  research,
+  large = false,
+}: {
+  research: Research;
+  large?: boolean;
+}) {
+  return (
+    <a
+      href={`${DETAIL_HASH}${encodeURIComponent(research.id)}`}
+      aria-label={`Lihat detail: ${research.title}`}
+      className="group -mx-3 block rounded-xl px-3 py-5 transition-colors duration-300 hover:bg-[#F6F9F3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+    >
+      <span className="flex items-center gap-4 md:gap-5">
+        {/* THUMBNAIL 16:9 (hanya tampil kalau ada gambar) */}
+        {research.image && (
+          <span
+            className={`relative shrink-0 overflow-hidden rounded-lg bg-[#EEF4EA] ${
+              large
+                ? "h-[72px] w-[128px] sm:h-[90px] sm:w-[160px]"
+                : "h-[50px] w-[88px] sm:h-[58px] sm:w-[104px]"
+            }`}
+          >
+            <Image
+              src={research.image}
+              unoptimized
+              alt=""
+              fill
+              sizes={large ? "160px" : "104px"}
+              className="object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          </span>
+        )}
+
+        <span className="block min-w-0 flex-1">
+          <span className="mb-2 flex flex-wrap items-center gap-1.5">
+            {research.group && (
+              <span className="rounded-md bg-[#31551F] px-2 py-0.5 text-[10.5px] font-semibold text-white">
+                {research.group}
+              </span>
+            )}
+
+            <span className="rounded-md bg-[#E3EEDC] px-2 py-0.5 text-[10.5px] font-semibold text-[#3F6B28]">
+              {research.program}
+            </span>
+
+            <span className="text-[11px] font-medium text-[#5E6B58]">
+              {research.year}
+            </span>
+          </span>
+
+          <span className="line-clamp-2 block text-[14.5px] font-semibold leading-[1.5] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F] md:text-[15px]">
+            {research.title}
+          </span>
+
+          <span className="mt-1.5 block truncate text-[12.5px] text-[#5E6B58]">
+            <span className="font-medium text-[#2F3B2A]">Ketua Pengusul:</span>{" "}
+            {research.leader}
+          </span>
+        </span>
+
+        <ChevronRight
+          size={18}
+          strokeWidth={2.2}
+          aria-hidden
+          className="shrink-0 text-[#31551F] transition-transform duration-300 group-hover:translate-x-1"
+        />
+      </span>
+    </a>
+  );
+}
+
+/* =========================================================
+   HALAMAN DAFTAR LENGKAP SATU BIDANG FOKUS
+   /penelitian#daftar-<slug>  (contoh: #daftar-pangan)
+========================================================= */
+
+function FocusListing({
+  area,
+  loading,
+  loadError,
+  onBack,
+}: {
+  area: FocusArea & { items: Research[] };
+  loading: boolean;
+  loadError: string;
+  onBack: () => void;
+}) {
+  const AreaIcon = area.icon;
+
+  return (
+    <section className="bg-white pb-16 pt-8 md:pb-24 md:pt-10">
+      <div className="mx-auto max-w-[1120px] px-5 md:px-7">
+        <button
+          type="button"
+          onClick={onBack}
+          className="group inline-flex items-center gap-2 rounded-lg text-[13px] font-semibold text-[#31551F] transition-colors duration-300 hover:text-[#3F6B28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#31551F]"
+        >
+          <ArrowLeft
+            size={15}
+            strokeWidth={2}
+            aria-hidden
+            className="transition-transform duration-300 group-hover:-translate-x-1"
+          />
+          Kembali ke Bidang Fokus Riset
+        </button>
+
+        <Reveal className="mt-6">
+          <div className="flex items-center gap-4 md:gap-5">
+            <AreaIcon
+              size={40}
+              strokeWidth={1.5}
+              aria-hidden
+              className="shrink-0 text-[#31551F]"
+            />
+
+            <div className="min-w-0">
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
+                Bidang Fokus Riset
+              </p>
+
+              <h1 className="mt-1.5 text-[22px] font-bold leading-[1.25] tracking-[-0.02em] text-[#1F2A1A] sm:text-[26px] md:text-[30px]">
+                {area.title}
+              </h1>
+
+              <p className="mt-1.5 text-[13px] font-medium text-[#5E6B58]">
+                {area.items.length} penelitian
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={100} className="mt-8 md:mt-10">
+          <div className="rounded-2xl border border-[#D9E2D3] bg-white px-6 py-2 md:px-10">
+            {area.items.length > 0 ? (
+              <ul className="divide-y divide-[#D9E2D3]">
+                {area.items.map((research) => (
+                  <li key={research.id}>
+                    <ResearchRow research={research} large />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-8 text-[13px] leading-[1.6] text-[#5E6B58]">
+                {loading
+                  ? "Memuat data penelitian..."
+                  : loadError || "Belum ada penelitian pada bidang ini."}
+              </p>
+            )}
+          </div>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 
@@ -1575,11 +1598,13 @@ function ResearchDetail({
                       label="Tahun"
                       value={research.year}
                     />
-                    {research.field && (<InfoRow
-                      icon={Layers}
-                      label="Bidang"
-                      value={research.field}
-                    />)}
+                    {research.field && (
+                      <InfoRow
+                        icon={Layers}
+                        label="Bidang"
+                        value={research.field}
+                      />
+                    )}
                   </div>
                 </div>
               </Reveal>
@@ -1703,44 +1728,5 @@ function DocumentCard({
         }`}
       />
     </a>
-  );
-}
-
-/* =========================================================
-   SELECT FIELD
-========================================================= */
-
-function SelectField({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        aria-label={label}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full appearance-none rounded-xl border border-transparent bg-[#F6F9F3] px-3 pr-9 text-[13.5px] text-[#1F2A1A] outline-none transition-all focus:border-[#31551F] focus:bg-white"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-
-      <ChevronDown
-        size={15}
-        aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#5E6B58]"
-      />
-    </div>
   );
 }

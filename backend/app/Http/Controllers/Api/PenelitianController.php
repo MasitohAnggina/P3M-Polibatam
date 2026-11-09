@@ -10,10 +10,24 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class PenelitianController extends Controller
 {
     private const GAMBAR_DIR = 'penelitian';
+
+    /* 8 bidang fokus riset. Harus sama persis dengan FOCUS_AREAS di
+       halaman admin dan focusAreas di halaman publik penelitian. */
+    public const BIDANG = [
+        'Ketahanan Pangan dan Pertanian',
+        'Transisi Energi, Material, dan Manufaktur',
+        'Kesehatan dan Kemandirian Obat Nasional',
+        'Rekayasa dan Teknologi Digital (AI, IoT, Semikonduktor)',
+        'Pertahanan dan Keamanan',
+        'Kemaritiman',
+        'Industri dan Hilirisasi',
+        'Kemandirian Sosial dan Budaya',
+    ];
 
     /* Publik (/api/penelitian) dan admin (/api/admin/penelitian):
        terbaru di atas (tahun terbesar dulu) */
@@ -88,7 +102,8 @@ class PenelitianController extends Controller
         return $request->validate([
             'judul'        => ['required', 'string', 'max:500'],
             'ketua'        => ['required', 'string', 'max:255'],
-            'bidang'       => ['nullable', 'string', 'max:255'],
+            // Bidang fokus wajib dan harus salah satu dari 8 bidang
+            'bidang'       => ['required', 'string', Rule::in(self::BIDANG)],
             'kelompok'     => ['nullable', 'in:Internal,Eksternal'],
             'program'      => ['required', 'string', 'max:150'],
             'tahun'        => ['required', 'digits:4'],
@@ -102,6 +117,8 @@ class PenelitianController extends Controller
         ], [
             'judul.required'   => 'Judul penelitian wajib diisi.',
             'ketua.required'   => 'Ketua pengusul wajib diisi.',
+            'bidang.required'  => 'Bidang fokus riset wajib dipilih.',
+            'bidang.in'        => 'Bidang fokus riset harus salah satu dari 8 bidang yang tersedia.',
             'program.required' => 'Program wajib dipilih.',
             'tahun.required'   => 'Tahun wajib diisi.',
             'tahun.digits'     => 'Tahun harus 4 digit angka.',

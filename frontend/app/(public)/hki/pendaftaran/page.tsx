@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Poppins } from "next/font/google";
 import {
   useEffect,
@@ -14,7 +13,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
-  CheckCircle2,
   Copyright,
   Cpu,
   ExternalLink,
@@ -22,7 +20,6 @@ import {
   Lightbulb,
   PenTool,
   Tag,
-  User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,8 +27,7 @@ import {
    FONT
    Sama dengan halaman Beranda, Profil, Penelitian, dan Pengabdian.
    Idealnya font didefinisikan sekali di src/app/layout.tsx lalu
-   dipakai semua halaman. Kalau Beranda memakai font lain, ganti
-   di layout saja.
+   dipakai semua halaman.
 ========================================================= */
 
 const poppins = Poppins({
@@ -40,11 +36,7 @@ const poppins = Poppins({
   display: "swap",
 });
 
-/* gradasi hero (sama dengan Beranda dan Profil): halus dan satu arah,
-   hijau tua di kiri atas makin terang ke kanan bawah. Lapisan kedua
-   hanya menggelapkan bagian atas sedikit supaya teks putih navbar tetap
-   terbaca.
-
+/* gradasi hero (sama dengan Beranda dan Profil).
    HERO: gaya sama dengan halaman Profil. Navbar (setinggi 72px)
    transparan di atas hero, jadi <main> diberi -mt-[72px] dan hero diberi
    pt-[72px]. Halaman ini harus terdaftar di HERO_PATHS pada Navbar.tsx
@@ -68,124 +60,50 @@ const delayStyle = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
    teks muted   : #5E6B58
    garis        : #D9E2D3
 
-   LATAR SEKSI: putih semua. Pemisah antar seksi memakai garis
-   tipis #D9E2D3. Warna lembut (#F6F9F3) hanya untuk hover dan
-   kolom isian, bukan untuk latar seksi.
+   PRINSIP TAMPILAN (supaya ringan dibaca)
+   - Teks pendek: satu atau dua kalimat per card, dibuat sama
+     panjang kira-kira (maksimal 2 baris).
+   - Card satu baris SELALU sama tinggi (rata atas dan bawah).
+   - Jarak antar bagian dirapatkan supaya halaman tidak panjang.
 
-   SKALA FONT
-   hero judul   : 36 / 44 / 52
-   judul seksi  : 26 / 30 / 34
-   judul kartu  : 15 (huruf kapital)
-   isi          : 13.5-14 (leading 1.75)
-   label/meta   : 11.5-13
+   BAGIAN HALAMAN
+   1. Apa itu HKI           (pengantar 1 kalimat + 2 card)
+   2. Jenis HKI             (5 card)
+   3. Ajukan via SIMP3M     (tombol dan jadwal pengajuan)
+   4. Tim Pengelola         (TABEL: no, jabatan, nama, jurusan)
+   5. Informasi Terkait HKI (2 card tautan: materi dan panduan)
 
-   FOTO TIM PENGELOLA
-   format PNG atau JPG, rasio 4:3, minimal 1280 x 960 px,
-   maksimal 5 MB (diatur lewat halaman admin Tim Pengelola HKI).
+   TIM PENGELOLA
+   Datanya ditulis langsung di kode (konstanta TEAM di bawah), TIDAK
+   diambil dari API dan TIDAK dikelola lewat halaman admin. Kalau
+   susunan tim berubah (SK baru), cukup ubah TEAM dan NOMOR_SK.
+   Jurusan adalah jurusan yang DILAYANI tiap PIC (bisa lebih dari
+   satu), sesuai SK. Untuk Ketua, jurusan dikosongkan.
 
-   GRID KARTU (class .kartu-grid, didefinisikan di <style> bawah)
-   Jumlah kolom ditentukan oleh LEBAR WADAH kartu (container query),
-   bukan lebar jendela dan bukan breakpoint Tailwind. Jadi hasilnya
-   sama di Chrome dan Edge, apa pun zoom atau ukuran font browsernya.
+   GRID KARTU (class .kartu-grid, di <style> bawah)
+   Jumlah kolom ditentukan oleh LEBAR WADAH (container query),
+   bukan lebar jendela. Hasilnya sama di Chrome dan Edge.
      wadah >= 880px : 3 kolom
      wadah >= 580px : 2 kolom
      di bawahnya    : 1 kolom
-   Baris terakhir yang tidak penuh tetap rata tengah.
-   Varian: .kartu-grid--dua (maksimal 2 kolom), .kartu-grid--rapat
-   (jarak antar kartu 24px).
+   Baris terakhir yang tidak penuh melebar sama besar sampai tepi kiri
+   dan kanan sejajar dengan baris di atasnya (5 card = 3 + 2).
+   Varian: .kartu-grid--dua (maksimal 2 kolom).
 ========================================================= */
-
-/* =========================================================
-   API
-   Atur NEXT_PUBLIC_API_URL di .env.local, contoh:
-   NEXT_PUBLIC_API_URL=http://localhost:8000/api
-========================================================= */
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
-
-/* =========================================================
-   TYPE
-========================================================= */
-
-type TeamMember = {
-  id: number;
-  role: string;
-  name: string;
-  image: string;
-};
-
-/* Bentuk data dari API Laravel */
-type ApiTeamMember = {
-  id: number;
-  jabatan: string;
-  nama: string;
-  urutan: number;
-  foto: string | null;
-};
 
 /* =========================================================
    DATA
 ========================================================= */
 
-const simp3mLogin =
-  "https://simp3m.polibatam.ac.id/index.php?page=login";
+const simp3mLogin = "https://simp3m.polibatam.ac.id/index.php?page=login";
 
-/* Penjelasan dasar HKI. Hak Cipta timbul otomatis dan pencatatan
-   hanya memperkuat bukti; hak kekayaan industri berlaku melalui
-   pendaftaran. */
-const hkiCategories = [
-  {
-    title: "Hak Cipta",
-    description:
-      "Timbul otomatis ketika karya diwujudkan. Pencatatan ke DJKI tidak wajib, tetapi memperkuat bukti bila terjadi sengketa.",
-    icon: Copyright,
-  },
-  {
-    title: "Hak Kekayaan Industri",
-    description:
-      "Meliputi paten, merek, desain industri, rahasia dagang, desain tata letak sirkuit terpadu, dan indikasi geografis. Perlindungannya berlaku melalui pendaftaran.",
-    icon: Lightbulb,
-  },
-];
+/* Nomor SK pengelolaan Sentra HKI. Samakan dengan dokumen SK asli
+   dan dengan website P3M. */
+const NOMOR_SK = "171/K/PL29/I/2026";
 
-type HkiType = {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-const hkiTypes: HkiType[] = [
-  {
-    title: "Hak Cipta",
-    description:
-      "Hak eksklusif bagi pencipta atau penerima hak untuk mengumumkan atau memperbanyak ciptaannya.",
-    icon: Copyright,
-  },
-  {
-    title: "Paten",
-    description:
-      "Hak eksklusif yang diberikan negara kepada inventor atas hasil invensinya di bidang teknologi.",
-    icon: Lightbulb,
-  },
-  {
-    title: "Desain Industri",
-    description:
-      "Kreasi bentuk, konfigurasi, atau komposisi garis dan warna yang menghasilkan kesan estetis serta dapat dipakai untuk produk, barang, atau kerajinan tangan.",
-    icon: PenTool,
-  },
-  {
-    title: "Merek",
-    description:
-      "Tanda berupa gambar, nama, kata, huruf, angka, susunan warna, atau kombinasinya yang memiliki daya pembeda dan digunakan dalam kegiatan perdagangan barang atau jasa.",
-    icon: Tag,
-  },
-  {
-    title: "Desain Tata Letak Sirkuit Terpadu",
-    description:
-      "Rancangan peletakan tiga dimensi elemen sirkuit yang saling berkaitan dan dibentuk secara terpadu dalam bahan semikonduktor, sebagai persiapan pembuatan sirkuit terpadu.",
-    icon: Cpu,
-  },
-];
+/* File SK (PDF) di website P3M, dibuka di tab baru. */
+const SK_URL =
+  "https://p2m.polibatam.ac.id/wp-content/uploads/2026/03/171-Penetapan-Tim-Pengelola-Sentra-KI-Tahun-2026_compressed.pdf";
 
 /* Materi HKI (folder OneDrive P3M) dan tautan layanan Sentra HKI
    (Linktree). Keduanya situs luar, dibuka di tab baru. */
@@ -194,7 +112,112 @@ const MATERI_HKI_URL =
 
 const PENDAFTARAN_HKI_URL = "https://linktr.ee/IPLink_SentralAkses";
 
-const relatedInfo = [
+/* ---------------------------------------------------------
+   TIM PENGELOLA SENTRA HKI (sesuai SK No. 171/K/PL29/I/2026)
+   Urutan tampil = urutan di array ini.
+--------------------------------------------------------- */
+
+type TeamMember = {
+  role: string;
+  name: string;
+  /* jurusan yang dilayani; kosong untuk Ketua */
+  departments: string[];
+};
+
+/* Paten dan Desain Industri melayani keempat jurusan */
+const ALL_DEPARTMENTS = [
+  "Teknik Elektro",
+  "Teknik Mesin",
+  "Teknik Informatika",
+  "Manajemen Bisnis",
+];
+
+const TEAM: TeamMember[] = [
+  {
+    role: "Ketua Sentra HKI",
+    name: "Fitriyanti Nakul",
+    departments: [],
+  },
+  {
+    role: "PIC Hak Cipta",
+    name: "Muhammad Ali Faisal",
+    departments: ["Manajemen Bisnis", "Teknik Mesin"],
+  },
+  {
+    role: "PIC Hak Cipta",
+    name: "Widya Putri Ramadhani",
+    departments: ["Teknik Informatika", "Teknik Elektro"],
+  },
+  {
+    role: "PIC Paten / Paten Sederhana, dan DTLST",
+    name: "Mishthafiyatillah",
+    departments: ALL_DEPARTMENTS,
+  },
+  {
+    role: "PIC Desain Industri",
+    name: "Adi Syahputra Purba",
+    departments: ALL_DEPARTMENTS,
+  },
+];
+
+type InfoItem = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+type LinkItem = InfoItem & {
+  href: string;
+};
+
+/* Dua kelompok HKI. Hak Cipta timbul otomatis (pencatatan hanya
+   memperkuat bukti); hak kekayaan industri berlaku lewat pendaftaran. */
+const hkiCategories: InfoItem[] = [
+  {
+    title: "Hak Cipta",
+    description:
+      "Timbul otomatis saat karya diwujudkan. Pencatatan ke DJKI tidak wajib, tetapi memperkuat bukti.",
+    icon: Copyright,
+  },
+  {
+    title: "Hak Kekayaan Industri",
+    description:
+      "Meliputi paten, merek, desain industri, dan sejenisnya. Berlaku setelah didaftarkan.",
+    icon: Lightbulb,
+  },
+];
+
+/* Deskripsi sengaja singkat (maksimal 2 baris) supaya semua card
+   punya tinggi yang sama dan rapi. */
+const hkiTypes: InfoItem[] = [
+  {
+    title: "Hak Cipta",
+    description: "Hak eksklusif pencipta atas karya yang dihasilkannya.",
+    icon: Copyright,
+  },
+  {
+    title: "Paten",
+    description: "Hak eksklusif inventor atas invensi di bidang teknologi.",
+    icon: Lightbulb,
+  },
+  {
+    title: "Desain Industri",
+    description: "Perlindungan bentuk, garis, atau warna pada suatu produk.",
+    icon: PenTool,
+  },
+  {
+    title: "Merek",
+    description: "Tanda pembeda barang atau jasa, seperti nama atau logo.",
+    icon: Tag,
+  },
+  {
+    title: "Desain Tata Letak Sirkuit Terpadu",
+    description: "Rancangan tata letak tiga dimensi sirkuit pada semikonduktor.",
+    icon: Cpu,
+  },
+];
+
+const relatedInfo: LinkItem[] = [
   {
     title: "Materi terkait HKI",
     description: "Dokumen Materi HKI Polibatam.",
@@ -260,8 +283,7 @@ function usePrefersReducedMotion() {
 
 /* Animasi hero yang mengikuti scroll (sama dengan Beranda dan Profil).
    Mengisi variabel CSS --p (0 = hero di posisi awal, 1 = hero sudah
-   terscroll habis) pada elemen hero. Nilainya langsung ditulis ke DOM
-   (bukan state), jadi halaman tidak dirender ulang tiap scroll. */
+   terscroll habis) langsung ke DOM, bukan state. */
 function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
   const ref = useRef<T>(null);
 
@@ -278,8 +300,6 @@ function useHeroScroll<T extends HTMLElement>(disabled: boolean) {
 
     const update = () => {
       raf = 0;
-      /* hero belum tentu di paling atas halaman (ada navbar di atasnya),
-         jadi tinggi yang dipakai = posisi atas + tinggi hero */
       const progress = Math.min(
         Math.max(window.scrollY / Math.max(el.offsetTop + el.offsetHeight, 1), 0),
         1
@@ -366,7 +386,7 @@ function ScrollProgress() {
 }
 
 /* =========================================================
-   JUDUL BAGIAN (rata kiri)
+   JUDUL BAGIAN (rata kiri, jarak dirapatkan)
 ========================================================= */
 
 function SectionTitle({
@@ -379,19 +399,19 @@ function SectionTitle({
   description?: string;
 }) {
   return (
-    <Reveal className="mb-9 md:mb-12">
+    <Reveal className="mb-7 md:mb-9">
       {eyebrow && (
-        <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
+        <p className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#3F6B28]">
           {eyebrow}
         </p>
       )}
 
-      <h2 className="max-w-[720px] text-[26px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2A1A] sm:text-[30px] md:text-[34px]">
+      <h2 className="max-w-[720px] text-[24px] font-bold leading-[1.25] tracking-[-0.02em] text-[#1F2A1A] sm:text-[27px] md:text-[30px]">
         {title}
       </h2>
 
       {description && (
-        <p className="mt-3 max-w-[620px] text-[14px] leading-[1.75] text-[#5E6B58]">
+        <p className="mt-2.5 max-w-[620px] text-[14px] leading-[1.7] text-[#5E6B58]">
           {description}
         </p>
       )}
@@ -400,57 +420,92 @@ function SectionTitle({
 }
 
 /* =========================================================
+   CARD RINGKAS
+   Ikon kecil di kiri, judul dan teks di kanan.
+   Tinggi card mengikuti card terpanjang di barisnya, jadi atas
+   dan bawah tiap baris selalu sejajar (h-full + min-height).
+   LinkCard = card yang menjadi tautan ke situs luar
+   (dibuka di tab baru).
+========================================================= */
+
+const cardClass =
+  "group relative flex h-full min-h-[104px] w-full items-start gap-4 overflow-hidden rounded-xl border border-[#D9E2D3] bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#8DC26F] hover:shadow-[0_10px_24px_rgba(49,85,31,0.10)] sm:p-5";
+
+const iconBoxClass =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EEF4EA] text-[#31551F] transition-colors duration-300 group-hover:bg-[#31551F] group-hover:text-white";
+
+function InfoCard({ item }: { item: InfoItem }) {
+  const Icon = item.icon;
+
+  return (
+    <article className={cardClass}>
+      <span className={iconBoxClass}>
+        <Icon size={20} strokeWidth={1.7} aria-hidden />
+      </span>
+
+      <div className="min-w-0">
+        <h3 className="text-[14.5px] font-semibold leading-[1.4] text-[#1F2A1A]">
+          {item.title}
+        </h3>
+
+        <p className="mt-1 text-[13px] leading-[1.65] text-[#5E6B58]">
+          {item.description}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function LinkCard({ item }: { item: LinkItem }) {
+  const Icon = item.icon;
+
+  return (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${cardClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]`}
+    >
+      <span className={iconBoxClass}>
+        <Icon size={20} strokeWidth={1.7} aria-hidden />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <h3 className="text-[14.5px] font-semibold leading-[1.4] text-[#1F2A1A]">
+          {item.title}
+        </h3>
+
+        <p className="mt-1 text-[13px] leading-[1.65] text-[#5E6B58]">
+          {item.description}
+        </p>
+
+        <span className="mt-2.5 inline-flex items-center gap-0.5 text-[13px] font-semibold text-[#31551F]">
+          Buka Tautan
+          <ArrowUpRight
+            size={15}
+            strokeWidth={2.2}
+            aria-hidden
+            className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+          />
+          <span className="sr-only"> (membuka tab baru)</span>
+        </span>
+      </div>
+    </a>
+  );
+}
+
+/* =========================================================
    HALAMAN PENDAFTARAN HKI
 ========================================================= */
+
+const thClass =
+  "px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-[0.06em] text-[#3F6B28] sm:px-5";
+
+const tdClass = "px-4 py-3.5 align-top text-[13.5px] leading-[1.6] sm:px-5";
 
 export default function PendaftaranHKIPage() {
   const reduceMotion = usePrefersReducedMotion();
   const heroRef = useHeroScroll<HTMLElement>(reduceMotion);
-
-  /* Tim pengelola diambil dari backend/database.
-     Urutan tampil mengikuti kolom urutan dari API. */
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [teamLoading, setTeamLoading] = useState(true);
-  const [teamError, setTeamError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const res = await fetch(`${API_URL}/tim-hki`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-
-        if (!res.ok) throw new Error(`Kode ${res.status}`);
-
-        const json = await res.json();
-
-        if (!cancelled) {
-          setTeam(
-            ((json.data ?? []) as ApiTeamMember[]).map((item) => ({
-              id: item.id,
-              role: item.jabatan,
-              name: item.nama,
-              image: item.foto ?? "",
-            }))
-          );
-          setTeamError("");
-        }
-      } catch {
-        if (!cancelled) setTeamError("Data tim pengelola gagal dimuat.");
-      } finally {
-        if (!cancelled) setTeamLoading(false);
-      }
-    };
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <main
@@ -466,7 +521,7 @@ export default function PendaftaranHKIPage() {
         className="hero-bg relative overflow-hidden pt-[72px] text-white"
         style={{ backgroundImage: HERO_GRADIENT }}
       >
-        <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-16 pt-14 text-center md:px-7 md:pb-24 md:pt-20">
+        <div className="hero-content relative z-10 mx-auto max-w-[1120px] px-5 pb-14 pt-12 text-center md:px-7 md:pb-20 md:pt-16">
           <div className="mx-auto max-w-[720px]">
             {/* judul muncul kata demi kata */}
             <h1 className="text-[36px] font-medium leading-[1.15] tracking-[-0.02em] [text-wrap:balance] sm:text-[44px] md:text-[52px]">
@@ -492,100 +547,59 @@ export default function PendaftaranHKIPage() {
 
       {/* =====================================================
           APA ITU HKI
-          Penjelasan singkat dan dua kelompok HKI
+          Pengantar satu kalimat + dua card
       ===================================================== */}
       <section
         id="apa-itu-hki"
-        className="scroll-mt-20 bg-white py-20 md:py-28"
+        className="scroll-mt-20 bg-white py-14 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             eyebrow="Tentang HKI"
             title="Apa itu Hak Kekayaan Intelektual?"
-            description="Hak Kekayaan Intelektual (HKI) adalah hak hukum bagi pencipta atau penemu atas karya hasil pemikirannya, sehingga mereka dapat menikmati manfaat ekonominya. Di Indonesia, HKI terbagi menjadi dua kelompok."
+            description="Hak hukum atas karya hasil pemikiran, agar pencipta atau penemunya dapat menikmati manfaatnya. Di Indonesia, HKI terbagi dua kelompok."
           />
 
-          {/* DUA KELOMPOK HKI (maksimal 2 kolom) */}
           <div className="kartu-grid kartu-grid--dua">
-            {hkiCategories.map((item, index) => {
-              const Icon = item.icon;
-
-              return (
-                <Reveal key={item.title} delay={index * 110} className="flex">
-                  <article className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-2 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)]">
-                    {/* sapuan warna saat hover */}
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
-
-                    <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F] transition-all duration-500 group-hover:scale-105 group-hover:bg-[#31551F] group-hover:text-white">
-                      <Icon size={26} strokeWidth={1.6} aria-hidden />
-                    </span>
-
-                    <h3 className="mt-5 text-[15px] font-semibold uppercase leading-[1.45] tracking-[0.03em] text-[#31551F]">
-                      {item.title}
-                    </h3>
-
-                    <p className="mt-3 text-[13.5px] leading-[1.75] text-[#5E6B58]">
-                      {item.description}
-                    </p>
-                  </article>
-                </Reveal>
-              );
-            })}
+            {hkiCategories.map((item, index) => (
+              <Reveal key={item.title} delay={index * 100} className="flex">
+                <InfoCard item={item} />
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
       {/* =====================================================
           JENIS HKI
-          (kartu grid seperti "Layanan Utama" di Beranda)
-          3 kolom; baris terakhir (2 kartu) rata tengah
+          3 kolom; baris terakhir (2 card) rata tengah
       ===================================================== */}
       <section
         id="jenis-hki"
-        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-20 md:py-28"
+        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-14 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             eyebrow="Informasi HKI"
-            title="Jenis Hak Kekayaan Intelektual"
-            description="Pendaftaran HKI merupakan proses pengajuan perlindungan atas hasil karya, inovasi, dan ciptaan sivitas akademika Politeknik Negeri Batam."
+            title="Jenis HKI yang dapat didaftarkan"
           />
 
           <div className="kartu-grid">
-            {hkiTypes.map((item, index) => {
-              const Icon = item.icon;
-
-              return (
-                <Reveal key={item.title} delay={index * 110} className="flex">
-                  <article className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-2 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)]">
-                    {/* sapuan warna saat hover */}
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
-
-                    <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F] transition-all duration-500 group-hover:scale-105 group-hover:bg-[#31551F] group-hover:text-white">
-                      <Icon size={26} strokeWidth={1.6} aria-hidden />
-                    </span>
-
-                    <h3 className="mt-5 text-[15px] font-semibold uppercase leading-[1.45] tracking-[0.03em] text-[#31551F]">
-                      {item.title}
-                    </h3>
-
-                    <p className="mt-3 text-[13.5px] leading-[1.75] text-[#5E6B58]">
-                      {item.description}
-                    </p>
-                  </article>
-                </Reveal>
-              );
-            })}
+            {hkiTypes.map((item, index) => (
+              <Reveal key={item.title} delay={index * 80} className="flex">
+                <InfoCard item={item} />
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
       {/* =====================================================
           AJAKAN PENGAJUAN SIMP3M
-          (pita hijau bertitik seperti bagian Statistik di Beranda)
+          Pita hijau: tombol utama dan jadwal singkat.
       ===================================================== */}
       <section
-        className="relative overflow-hidden bg-[#31551F] py-14 text-white md:py-16"
+        className="relative overflow-hidden bg-[#31551F] py-12 text-white md:py-14"
         style={{
           backgroundImage:
             "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
@@ -596,18 +610,18 @@ export default function PendaftaranHKIPage() {
         <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[#8DC26F]/10 blur-3xl" />
 
         <div className="relative mx-auto max-w-[1120px] px-5 md:px-7">
-          <Reveal className="mx-auto max-w-[620px] text-center">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-[#CFE8BF]">
-              <ExternalLink size={22} strokeWidth={1.6} aria-hidden />
+          <Reveal className="mx-auto max-w-[560px] text-center">
+            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-white/10 text-[#CFE8BF]">
+              <ExternalLink size={20} strokeWidth={1.6} aria-hidden />
             </span>
 
-            <h2 className="mt-5 text-[24px] font-bold leading-[1.25] tracking-[-0.02em] md:text-[30px]">
+            <h2 className="mt-4 text-[22px] font-bold leading-[1.25] tracking-[-0.02em] md:text-[27px]">
               Ajukan HKI melalui SIMP3M
             </h2>
 
-            <p className="mt-3 text-[14px] leading-[1.75] text-white/80">
-              Seluruh pengajuan HKI Polibatam dilakukan lewat sistem SIMP3M.
-              Masuk dengan akun Anda untuk memulai pengajuan.
+            <p className="mt-2.5 text-[14px] leading-[1.7] text-white/80">
+              Pengajuan dibuka hingga tanggal 15 setiap bulan. Pengajuan
+              setelah tanggal 15 diproses pada bulan berikutnya.
             </p>
 
             {/* link eksternal: pakai <a> biasa, bukan next/link */}
@@ -615,7 +629,7 @@ export default function PendaftaranHKIPage() {
               href={simp3mLogin}
               target="_blank"
               rel="noopener noreferrer"
-              className="group mt-7 inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-[13px] font-semibold text-[#31551F] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="group mt-6 inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-[13px] font-semibold text-[#31551F] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EEF4EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Buka SIMP3M
               <ArrowRight
@@ -630,93 +644,96 @@ export default function PendaftaranHKIPage() {
       </section>
 
       {/* =====================================================
-          TIM PENGELOLA SENTRA HKI
-          (kartu foto seperti Struktur Organisasi di halaman Profil)
+          TIM PENGELOLA SENTRA HKI (TABEL)
+          Data dari konstanta TEAM (tidak dari API / admin).
+          Kolom: No, Jabatan, Nama, Jurusan yang dilayani.
+          Di layar kecil tabel bisa digeser ke samping.
       ===================================================== */}
       <section
         id="tim-pengelola"
-        className="scroll-mt-20 bg-white py-20 md:py-28"
+        className="scroll-mt-20 bg-white py-14 md:py-20"
       >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             eyebrow="Tim Pengelola HKI"
             title="Tim Pengelola Sentra HKI Polibatam"
-            description="Tim yang bertanggung jawab dalam pengelolaan Hak Kekayaan Intelektual di lingkungan Politeknik Negeri Batam."
           />
 
-          {team.length === 0 ? (
-            <Reveal>
-              <div className="rounded-2xl border border-dashed border-[#D9E2D3] bg-[#EEF4EA]/50 px-6 py-14 text-center">
-                <p className="text-[14px] font-medium text-[#1F2A1A]">
-                  {teamLoading
-                    ? "Memuat data..."
-                    : teamError || "Data tim pengelola belum tersedia"}
-                </p>
-              </div>
-            </Reveal>
-          ) : (
-            <div className="kartu-grid kartu-grid--rapat">
-              {team.map((member, index) => (
-                <Reveal
-                  key={member.id}
-                  delay={(index % 3) * 110}
-                  className="flex"
-                >
-                  <article className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white transition-all duration-500 hover:-translate-y-1.5 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)]">
-                    {/* FOTO (landscape 4:3). Unggahan dari admin minimal
-                        1280 x 960 px, jadi tidak perlu dioptimasi lagi
-                        oleh next/image (unoptimized). */}
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#EEF4EA]">
-                      {member.image ? (
-                        <Image
-                          src={member.image}
-                          alt={member.name}
-                          fill
-                          unoptimized
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-                          className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#3F6B28] via-[#31551F] to-[#213B14] text-white/60">
-                          <User size={44} strokeWidth={1.3} aria-hidden />
-                        </div>
-                      )}
-                    </div>
+          {/* dasar pengelolaan, satu kalimat sebelum tabel */}
+          <Reveal>
+            <p className="-mt-3 mb-5 text-[13.5px] leading-[1.7] text-[#5E6B58] md:-mt-5">
+              Berikut tim pengelola berdasarkan Surat Keputusan No.{" "}
+              <a
+                href={SK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#31551F] underline decoration-[#8DC26F] underline-offset-4 transition-colors hover:text-[#213B14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
+              >
+                {NOMOR_SK}
+                <span className="sr-only"> (membuka PDF di tab baru)</span>
+              </a>
+              .
+            </p>
+          </Reveal>
 
-                    {/* JABATAN & NAMA */}
-                    <div className="flex flex-1 flex-col px-4 pb-5 pt-3.5 text-center">
-                      <p className="text-[10.5px] font-semibold uppercase leading-[1.6] tracking-[0.08em] text-[#3F6B28]">
-                        {member.role}
-                      </p>
+          <Reveal>
+            <div className="overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] border-collapse">
+                  <caption className="sr-only">
+                    Tim Pengelola Sentra HKI Polibatam
+                  </caption>
 
-                      <h3 className="mt-1.5 text-[14.5px] font-semibold leading-[1.45] tracking-[-0.01em] text-[#1F2A1A] transition-colors duration-300 group-hover:text-[#31551F]">
-                        {member.name}
-                      </h3>
-                    </div>
+                  <thead>
+                    <tr className="border-b border-[#D9E2D3] bg-[#EEF4EA]">
+                      <th scope="col" className={`${thClass} w-[64px]`}>
+                        No
+                      </th>
+                      <th scope="col" className={`${thClass} w-[30%]`}>
+                        Jabatan
+                      </th>
+                      <th scope="col" className={`${thClass} w-[24%]`}>
+                        Nama
+                      </th>
+                      <th scope="col" className={thClass}>
+                        Jurusan
+                      </th>
+                    </tr>
+                  </thead>
 
-                    {/* sapuan warna saat hover */}
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
-                  </article>
-                </Reveal>
-              ))}
-            </div>
-          )}
+                  <tbody>
+                    {TEAM.map((member, index) => (
+                      <tr
+                        key={`${member.role}-${member.name}`}
+                        className="border-t border-[#D9E2D3] transition-colors duration-300 first:border-t-0 hover:bg-[#F6F9F3]"
+                      >
+                        <td className={`${tdClass} font-semibold text-[#31551F]`}>
+                          {index + 1}
+                        </td>
 
-          {/* CATATAN */}
-          <Reveal delay={100}>
-            <div className="mt-8 flex items-center gap-4 rounded-2xl border border-[#D9E2D3] bg-white px-5 py-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EEF4EA] text-[#31551F]">
-                <CheckCircle2 size={19} strokeWidth={1.8} aria-hidden />
-              </span>
+                        <td className={`${tdClass} text-[#31551F]`}>
+                          {member.role}
+                        </td>
 
-              <div>
-                <p className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-[#3F6B28]">
-                  Dasar Pengelolaan
-                </p>
+                        <td
+                          className={`${tdClass} font-semibold text-[#1F2A1A]`}
+                        >
+                          {member.name}
+                        </td>
 
-                <p className="mt-0.5 text-[13.5px] leading-[1.7] text-[#5E6B58]">
-                  Berdasarkan Surat Keputusan No. 171/KP/PL29/I/2026
-                </p>
+                        <td className={`${tdClass} text-[#5E6B58]`}>
+                          {member.departments.length > 0 ? (
+                            member.departments.join(", ")
+                          ) : (
+                            <span aria-label="Tidak ada" className="text-[#A3AE9E]">
+                              —
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </Reveal>
@@ -725,56 +742,24 @@ export default function PendaftaranHKIPage() {
 
       {/* =====================================================
           INFORMASI TERKAIT HKI
+          Dua card tautan: materi dan panduan pendaftaran
       ===================================================== */}
-      <section className="border-t border-[#D9E2D3] bg-white py-20 md:py-28">
+      <section
+        id="informasi-terkait"
+        className="scroll-mt-20 border-t border-[#D9E2D3] bg-white py-14 md:py-20"
+      >
         <div className="mx-auto max-w-[1120px] px-5 md:px-7">
           <SectionTitle
             eyebrow="Unduhan & Panduan"
             title="Informasi Terkait HKI"
-            description="Akses materi dan panduan yang berkaitan dengan pengelolaan Hak Kekayaan Intelektual Polibatam."
           />
 
           <div className="kartu-grid kartu-grid--dua">
-            {relatedInfo.map((item, index) => {
-              const Icon = item.icon;
-
-              return (
-                <Reveal key={item.title} delay={index * 110} className="flex">
-                  <a
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#D9E2D3] bg-white p-7 transition-all duration-500 hover:-translate-y-2 hover:border-[#8DC26F] hover:shadow-[0_20px_44px_rgba(49,85,31,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#31551F]"
-                  >
-                    {/* sapuan warna saat hover */}
-                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#31551F] to-[#8DC26F] transition-transform duration-500 group-hover:scale-x-100" />
-
-                    <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#EEF4EA] text-[#31551F] transition-all duration-500 group-hover:scale-105 group-hover:bg-[#31551F] group-hover:text-white">
-                      <Icon size={26} strokeWidth={1.6} aria-hidden />
-                    </span>
-
-                    <h3 className="mt-5 text-[15px] font-semibold uppercase leading-[1.45] tracking-[0.03em] text-[#31551F]">
-                      {item.title}
-                    </h3>
-
-                    <p className="mt-3 text-[13.5px] leading-[1.75] text-[#5E6B58]">
-                      {item.description}
-                    </p>
-
-                    <span className="mt-auto inline-flex items-center gap-0.5 pt-5 text-[13px] font-semibold text-[#31551F]">
-                      Buka Tautan
-                      <ArrowUpRight
-                        size={15}
-                        strokeWidth={2.2}
-                        aria-hidden
-                        className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                      />
-                      <span className="sr-only"> (membuka tab baru)</span>
-                    </span>
-                  </a>
-                </Reveal>
-              );
-            })}
+            {relatedInfo.map((item, index) => (
+              <Reveal key={item.title} delay={index * 100} className="flex">
+                <LinkCard item={item} />
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
@@ -795,36 +780,37 @@ export default function PendaftaranHKIPage() {
         }
 
         /* GRID KARTU berbasis lebar wadah (container query).
-           Tidak bergantung pada breakpoint Tailwind atau lebar jendela. */
+           Tidak bergantung pada breakpoint Tailwind atau lebar jendela.
+           Tanpa align-items khusus: card dalam satu baris otomatis
+           ditarik sama tinggi (rata atas dan bawah). */
         .kartu-grid {
-          --gap: 20px;
+          --gap: 14px;
           display: flex;
           flex-wrap: wrap;
-          justify-content: center;
           gap: var(--gap);
           container-type: inline-size;
         }
 
-        .kartu-grid--rapat {
-          --gap: 24px;
-        }
-
+        /* flex-grow: 1 membuat card di baris terakhir yang tidak penuh
+           melebar sama besar mengisi seluruh lebar, jadi tepi kiri dan
+           kanannya sejajar dengan baris di atasnya. Contoh: 5 card =
+           3 card di baris pertama, 2 card selebar setengah di baris kedua. */
         .kartu-grid > * {
-          flex: 0 0 auto;
-          width: 100%;
+          flex: 1 1 100%;
+          min-width: 0;
         }
 
         /* 2 kolom */
         @container (min-width: 580px) {
           .kartu-grid > * {
-            width: calc((100% - var(--gap)) / 2 - 0.5px);
+            flex-basis: calc((100% - var(--gap)) / 2 - 0.5px);
           }
         }
 
         /* 3 kolom (kecuali varian "dua") */
         @container (min-width: 880px) {
           .kartu-grid:not(.kartu-grid--dua) > * {
-            width: calc((100% - var(--gap) * 2) / 3 - 0.5px);
+            flex-basis: calc((100% - var(--gap) * 2) / 3 - 0.5px);
           }
         }
 
@@ -869,8 +855,7 @@ export default function PendaftaranHKIPage() {
 
         /* ANIMASI HERO SAAT SCROLL
            --p = 0 (awal) sampai 1 (hero terscroll habis), diisi oleh
-           useHeroScroll. Tanpa animasi berulang: kalau scroll berhenti,
-           semuanya diam. */
+           useHeroScroll. */
         .hero-content {
           transform: translate3d(0, calc(var(--p, 0) * 70px), 0);
           opacity: max(0, calc(1 - var(--p, 0) * 1.25));
