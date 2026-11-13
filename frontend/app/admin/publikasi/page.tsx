@@ -613,13 +613,14 @@ export default function PublikasiPage() {
 
         {/* =====================================================
             SUMMARY PILLS
+            Grid dengan kolom sama lebar, jadi semua pill
+            berukuran sama berapa pun nilainya.
         ===================================================== */}
 
-        <div className="mb-6 flex flex-wrap gap-2 sm:flex-nowrap">
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           <SummaryPill
             label="Total"
             value={publications.length}
-            grow={Math.max(publications.length, 1)}
             className="bg-[#2E7D32] text-white"
           />
 
@@ -628,7 +629,6 @@ export default function PublikasiPage() {
               key={item.label}
               label={item.label}
               value={item.value}
-              grow={Math.max(item.value, 1)}
               className={pillTones[index % pillTones.length]}
             />
           ))}
@@ -1184,25 +1184,30 @@ export default function PublikasiPage() {
 
 /* =========================================================
    SUMMARY PILL
+   Lebar ditentukan oleh grid induk (kolom sama lebar),
+   bukan oleh nilai datanya.
 ========================================================= */
 
 function SummaryPill({
   label,
   value,
-  grow,
   className = "",
 }: {
   label: string;
   value: number;
-  grow: number;
   className?: string;
 }) {
   return (
-    <div className="min-w-[120px] sm:min-w-0" style={{ flexGrow: grow, flexBasis: 0 }}>
-      <p className="mb-1.5 truncate pl-1 text-[12px] text-[#7A867F]">{label}</p>
+    <div className="min-w-0">
+      <p
+        title={label}
+        className="mb-1.5 truncate pl-1 text-[12px] text-[#7A867F]"
+      >
+        {label}
+      </p>
 
       <div
-        className={`flex h-10 items-center rounded-full px-4 text-[13px] font-medium ${className}`}
+        className={`flex h-10 w-full items-center rounded-full px-4 text-[13px] font-medium ${className}`}
       >
         {value}
       </div>

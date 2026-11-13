@@ -1,19 +1,19 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Poppins } from "next/font/google";
 
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copyright,
   Eye,
-  ImageIcon,
   Pencil,
   Plus,
   Search,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 
@@ -109,9 +109,6 @@ type FormState = {
   inventor: string; // satu nama per baris
   nomorPermohonan: string;
   tahun: string;
-  gambarFile: File | null;
-  gambarUrl: string | null; // pratinjau (foto lama atau foto baru)
-  hapusGambar: boolean;
 };
 
 /* =========================================================
@@ -131,8 +128,14 @@ const hkiCategories = [
   "Karya Tulis/Buku",
   "Karya Lainnya/Program Komputer",
   "Karya Audio Visual/Karya Rekaman Video",
+  "Karya Tulis/Diktat",
+  "Modul",
+  "Buku Pedoman",
   "Lainnya",
 ];
+
+/* jumlah data per halaman */
+const PAGE_SIZE = 10;
 
 const makeEmptyForm = (): FormState => ({
   jenis: "",
@@ -141,9 +144,6 @@ const makeEmptyForm = (): FormState => ({
   inventor: "",
   nomorPermohonan: "",
   tahun: String(new Date().getFullYear()),
-  gambarFile: null,
-  gambarUrl: null,
-  hapusGambar: false,
 });
 
 /* "A\nB; C" -> ["A", "B", "C"] */
@@ -152,6 +152,26 @@ const splitInventor = (value: string) =>
     .split(/[\n;]/)
     .map((name) => name.trim())
     .filter(Boolean);
+
+/* nomor halaman yang ditampilkan, dengan "gap" untuk titik-titik */
+function getPageItems(total: number, current: number): (number | "gap")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages = Array.from(
+    new Set([1, total, current - 1, current, current + 1])
+  )
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b);
+
+  const items: (number | "gap")[] = [];
+
+  pages.forEach((n, index) => {
+    if (index > 0 && n - pages[index - 1] > 1) items.push("gap");
+    items.push(n);
+  });
+
+  return items;
+}
 
 /* =========================================================
    STYLE
@@ -184,6 +204,7 @@ export default function AdminHkiPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("Semua Jenis");
   const [yearFilter, setYearFilter] = useState("Semua Tahun");
+  const [page, setPage] = useState(1);
 
   const [modal, setModal] = useState<ModalType>(null);
   const [selectedItem, setSelectedItem] = useState<Hki | null>(null);
@@ -253,20 +274,33 @@ export default function AdminHkiPage() {
     });
   }, [items, search, typeFilter, yearFilter]);
 
+  /* kembali ke halaman 1 saat filter berubah */
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter, yearFilter]);
+
+  /* ---------- PAGINATION ---------- */
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+
+  const visibleItems = filteredItems.slice(startIndex, startIndex + PAGE_SIZE);
+
   /* ---------- RINGKASAN ---------- */
 
   const summary = useMemo(
-  () => ({
-    total: items.length,
-    hakCipta: items.filter((i) => i.jenis === "Hak Cipta").length,
-    paten: items.filter(
-      (i) => i.jenis === "Paten" || i.jenis === "Paten Sederhana"
-    ).length,
-    desain: items.filter((i) => i.jenis === "Desain Industri").length,
-    merek: items.filter((i) => i.jenis === "Merek").length,
-  }),
-  [items]
-);
+    () => ({
+      total: items.length,
+      hakCipta: items.filter((i) => i.jenis === "Hak Cipta").length,
+      paten: items.filter(
+        (i) => i.jenis === "Paten" || i.jenis === "Paten Sederhana"
+      ).length,
+      desain: items.filter((i) => i.jenis === "Desain Industri").length,
+      merek: items.filter((i) => i.jenis === "Merek").length,
+    }),
+    [items]
+  );
 
   /* ---------- MODAL ---------- */
 
@@ -288,14 +322,6 @@ export default function AdminHkiPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [modal, closeModal]);
 
-  // Bersihkan URL pratinjau foto baru saat diganti / ditutup
-  useEffect(() => {
-    const url = form.gambarFile ? form.gambarUrl : null;
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [form.gambarFile, form.gambarUrl]);
-
   const openAddModal = () => {
     setSelectedItem(null);
     setForm(makeEmptyForm());
@@ -312,9 +338,6 @@ export default function AdminHkiPage() {
       inventor: item.inventor.join("\n"),
       nomorPermohonan: item.nomor_permohonan,
       tahun: String(item.tahun),
-      gambarFile: null,
-      gambarUrl: item.gambar,
-      hapusGambar: false,
     });
     setFormError(null);
     setModal("edit");
@@ -328,29 +351,6 @@ export default function AdminHkiPage() {
   const openDeleteModal = (item: Hki) => {
     setSelectedItem(item);
     setModal("delete");
-  };
-
-  /* ---------- FOTO ---------- */
-
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setForm((prev) => ({
-      ...prev,
-      gambarFile: file,
-      gambarUrl: URL.createObjectURL(file),
-      hapusGambar: false,
-    }));
-  };
-
-  const removeImage = () => {
-    setForm((prev) => ({
-      ...prev,
-      gambarFile: null,
-      gambarUrl: null,
-      hapusGambar: true,
-    }));
   };
 
   /* ---------- SIMPAN ---------- */
@@ -377,9 +377,6 @@ export default function AdminHkiPage() {
     splitInventor(form.inventor).forEach((name) =>
       body.append("inventor[]", name)
     );
-
-    if (form.gambarFile) body.append("gambar", form.gambarFile);
-    if (form.hapusGambar) body.append("hapus_gambar", "1");
 
     const isEdit = modal === "edit" && selectedItem !== null;
 
@@ -479,36 +476,33 @@ export default function AdminHkiPage() {
           </div>
         )}
 
-        {/* RINGKASAN */}
-        <div className="mb-6 flex flex-wrap gap-2 sm:flex-nowrap">
+        {/* RINGKASAN
+            Grid dengan kolom sama lebar, jadi semua pill
+            berukuran sama berapa pun nilainya. */}
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-5">
           <SummaryPill
             label="Total"
             value={summary.total}
-            grow={Math.max(summary.total, 1)}
             className="bg-[#2E7D32] text-white"
           />
           <SummaryPill
             label="Hak Cipta"
             value={summary.hakCipta}
-            grow={Math.max(summary.hakCipta, 1)}
             className="bg-[#A5D6A7] text-[#1B5E20]"
           />
           <SummaryPill
             label="Paten"
             value={summary.paten}
-            grow={Math.max(summary.paten, 1)}
             className="bg-[#DDEBDD] text-[#1F5A23]"
           />
           <SummaryPill
             label="Desain Industri"
             value={summary.desain}
-            grow={Math.max(summary.desain, 1)}
             className="border border-[#2E7D32]/30 bg-transparent text-[#2E5B32]"
           />
           <SummaryPill
             label="Merek"
             value={summary.merek}
-            grow={Math.max(summary.merek, 1)}
             className="border border-[#2E7D32]/30 bg-transparent text-[#2E5B32]"
           />
         </div>
@@ -567,7 +561,7 @@ export default function AdminHkiPage() {
                 </thead>
 
                 <tbody>
-                  {filteredItems.map((item) => {
+                  {visibleItems.map((item) => {
                     const cell = "bg-white group-hover:bg-[#F2F8F2]";
 
                     return (
@@ -686,15 +680,73 @@ export default function AdminHkiPage() {
               </table>
             </div>
 
-            {/* FOOTER */}
-            <div className="flex flex-col gap-2 border-t border-[#EEF2EF] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            {/* FOOTER + PAGINATION */}
+            <div className="flex flex-col gap-3 border-t border-[#EEF2EF] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[12px] text-[#7A857D]">
-                Menampilkan{" "}
-                <span className="font-medium text-[#46544B]">
-                  {filteredItems.length}
-                </span>{" "}
-                dari {items.length} data HKI
+                {filteredItems.length > 0 ? (
+                  <>
+                    Menampilkan{" "}
+                    <span className="font-medium text-[#46544B]">
+                      {startIndex + 1}–{startIndex + visibleItems.length}
+                    </span>{" "}
+                    dari {filteredItems.length} data HKI
+                    {filteredItems.length !== items.length &&
+                      ` (total ${items.length})`}
+                  </>
+                ) : (
+                  <>Tidak ada data yang ditampilkan</>
+                )}
               </p>
+
+              {totalPages > 1 && (
+                <nav aria-label="Halaman daftar HKI" className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label="Halaman sebelumnya"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[#6F7B74] transition hover:bg-[#EEF3EF] disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <ChevronLeft size={16} strokeWidth={1.8} />
+                  </button>
+
+                  {getPageItems(totalPages, currentPage).map((item, index) =>
+                    item === "gap" ? (
+                      <span
+                        key={`gap-${index}`}
+                        className="px-1 text-[12px] text-[#A3AE9E]"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        aria-label={`Halaman ${item}`}
+                        aria-current={item === currentPage ? "page" : undefined}
+                        onClick={() => setPage(item)}
+                        className={`h-8 min-w-8 rounded-full px-2 text-[12px] font-medium transition ${
+                          item === currentPage
+                            ? "bg-[#2E7D32] text-white"
+                            : "text-[#5B675F] hover:bg-[#EEF3EF]"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    aria-label="Halaman berikutnya"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setPage(currentPage + 1)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[#6F7B74] transition hover:bg-[#EEF3EF] disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <ChevronRight size={16} strokeWidth={1.8} />
+                  </button>
+                </nav>
+              )}
             </div>
           </div>
         </div>
@@ -784,72 +836,6 @@ export default function AdminHkiPage() {
                     Baris pertama dianggap inventor utama.
                   </p>
                 </FormField>
-
-                {/* FOTO */}
-                <div className="md:col-span-2">
-                  <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
-                    <label className="text-[12px] font-medium text-[#536059]">
-                      Foto HKI (opsional)
-                    </label>
-
-                    <span className="text-[11px] text-[#9AA49F]">
-                      16:9, JPG / PNG, maks. 5 MB
-                    </span>
-                  </div>
-
-                  <div className="rounded-2xl border border-dashed border-[#C9D7CB] bg-[#FAFCFA] p-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="flex aspect-[16/9] w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#EEF3EF] text-[#9AA49F] sm:w-[160px]">
-                        {form.gambarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={form.gambarUrl}
-                            alt="Pratinjau foto HKI"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <ImageIcon size={22} strokeWidth={1.5} />
-                            <span className="mt-1 text-[11px]">Belum ada foto</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-[#536059]">
-                          Foto untuk halaman detail
-                        </p>
-
-                        <p className="mt-1 text-[11px] leading-5 text-[#929C96]">
-                          Jika kosong, halaman detail publik tampil tanpa foto.
-                        </p>
-
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                          <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[#C8D6CA] bg-white px-4 text-[12px] font-medium text-[#2E7D32] transition hover:bg-[#F1F8F2]">
-                            <Upload size={14} strokeWidth={1.8} />
-                            {form.gambarUrl ? "Ganti Foto" : "Pilih Foto"}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageChange}
-                              className="hidden"
-                            />
-                          </label>
-
-                          {form.gambarUrl && (
-                            <button
-                              type="button"
-                              onClick={removeImage}
-                              className="inline-flex h-9 items-center rounded-full px-3 text-[12px] font-medium text-[#D34B4B] transition hover:bg-[#FFF1F1]"
-                            >
-                              Hapus Foto
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -959,25 +945,30 @@ export default function AdminHkiPage() {
 
 /* =========================================================
    SUMMARY PILL
+   Lebar ditentukan oleh grid induk (kolom sama lebar),
+   bukan oleh nilai datanya.
 ========================================================= */
 
 function SummaryPill({
   label,
   value,
-  grow,
   className = "",
 }: {
   label: string;
   value: number;
-  grow: number;
   className?: string;
 }) {
   return (
-    <div className="min-w-[110px] sm:min-w-0" style={{ flexGrow: grow, flexBasis: 0 }}>
-      <p className="mb-1.5 pl-1 text-[12px] text-[#7A867F]">{label}</p>
+    <div className="min-w-0">
+      <p
+        title={label}
+        className="mb-1.5 truncate pl-1 text-[12px] text-[#7A867F]"
+      >
+        {label}
+      </p>
 
       <div
-        className={`flex h-10 items-center rounded-full px-4 text-[13px] font-medium ${className}`}
+        className={`flex h-10 w-full items-center rounded-full px-4 text-[13px] font-medium ${className}`}
       >
         {value}
       </div>
